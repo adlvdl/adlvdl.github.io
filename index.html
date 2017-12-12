@@ -2,12 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+	
     <title>Antonio de la Vega</title>
     <!-- Bootstrap -->
-	<link href="/css/external_style.css" rel="stylesheet">
+	<link href="css/external_style.css" rel="stylesheet" type="text/css">
+	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
 
 
   </head>
@@ -16,10 +15,24 @@
 	<section class="page-header">
       <h1 class="project-name">Antonio de la Vega de León</h1>
       <h2 class="project-tagline">Using computer science to aid chemical research</h2>
+      <span style="cursor:pointer" onclick="openNav()" id='menu_button'>&#9776; Menu</span>
       
+
+    
+    <nav id ="slide_nav" class='sidenav'>
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+		<ul style="list-style-type: none;">
+		<li><a href="index.html">Home</a></li>
+		<li><a href="research.html">Research</a></li>
+		<li><a href="publications.html">Publications</a></li>
+		<li><a href="outreach.html">Outreach</a></li>
+		<li><a href="teaching.html">Teaching</a></li>
+		<li><a href="cv.pdf">CV</a></li>
+		</ul>
+	</nav>    
       
     </section>
-	<nav>
+	<nav id ="left_nav">
 		<ul style="list-style-type: none">
 		<li><a href="index.html">Home</a></li>
 		<li><a href="research.html">Research</a></li>
@@ -28,7 +41,7 @@
 		<li><a href="teaching.html">Teaching</a></li>
 		<li><a href="cv.pdf">CV</a></li>
 		</ul>
-	</nav>	
+	</nav>
 		
 	<section class="main-content">
 		<h1 id="welcome">Welcome</h1>
@@ -63,5 +76,14 @@
 	</section>
 	
 	</article>
+          <script>
+function openNav() {
+    document.getElementById("slide_nav").style.width = "250px";
+}
+
+function closeNav() {
+    document.getElementById("slide_nav").style.width = "0";
+}
+</script>
   </body>
 </html>

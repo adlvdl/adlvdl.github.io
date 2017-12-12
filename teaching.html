@@ -13,10 +13,34 @@
 	<section class="page-header">
       <h1 class="project-name">Antonio de la Vega de León</h1>
       <h2 class="project-tagline">Using computer science to aid chemical research</h2>
+      <span style="cursor:pointer" onclick="openNav()" id='menu_button'>&#9776; Menu</span>
       
+
+    
+    <nav id ="slide_nav" class='sidenav'>
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+		<ul style="list-style-type: none;">
+		<li><a href="index.html">Home</a></li>
+		<li><a href="research.html">Research</a></li>
+		<li><a href="publications.html">Publications</a></li>
+		<li><a href="outreach.html">Outreach</a></li>
+		<li><a href="teaching.html">Teaching</a></li>
+		<li><a href="cv.pdf">CV</a></li>
+		</ul>
+	</nav>   
+
+<script>
+function openNav() {
+    document.getElementById("slide_nav").style.width = "250px";
+}
+
+function closeNav() {
+    document.getElementById("slide_nav").style.width = "0";
+}
+</script>    
       
     </section>
-	<nav>
+	<nav id ="left_nav">
 		<ul style="list-style-type: none">
 		<li><a href="index.html">Home</a></li>
 		<li><a href="research.html">Research</a></li>

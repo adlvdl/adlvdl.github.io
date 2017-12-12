@@ -1,9 +1,176 @@
 
-nav{
+nav#left_nav{
 	float:left;
 	margin-top: 2em;
 	font-size: 150%;
+    
 
+}
+
+@media screen and (min-width: 1251px) {
+    nav#slide_nav{
+        display:none;
+        
+    }
+    
+    span#menu_button{
+        display:none;
+        
+    }
+}
+
+@media screen and (max-width: 670px) {
+    
+    nav#left_nav{
+        width: 0;
+        visibility: hidden;
+    }
+    
+    span#menu_button{
+        display:block;
+        position: absolute;
+        top: 140px;
+        left: 10px;
+        font-size:1em;
+    }
+    
+    .sidenav {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #159957; background-image: linear-gradient(120deg, #155799, #159957);
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    display:block;
+}
+
+.sidenav a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 1.25em;
+    color: #fff;
+    display: block;
+    transition: 0.3s;
+}
+
+.sidenav a:hover {
+    color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+}
+
+@media screen and (max-width: 1030px) and (min-width:671px) {
+    
+    nav#left_nav{
+        width: 0;
+        visibility: hidden;
+    }
+    
+    span#menu_button{
+        display:block;
+        position: absolute;
+        top: 170px;
+        left: 10px;
+        font-size:1.5em;
+    }
+    
+    .sidenav {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #159957; background-image: linear-gradient(120deg, #155799, #159957);
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    display:block;
+}
+
+.sidenav a {
+    padding: 8px 8px 8px 8px;
+    text-decoration: none;
+    font-size: 1.5em;
+    color: #fff;
+    display: block;
+    transition: 0.3s;
+}
+
+.sidenav a:hover {
+    color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+}
+
+@media screen and (max-width: 1250px) and (min-width:1031px) {
+    nav#left_nav{
+        width: 0;
+        visibility: hidden;
+    }
+    
+    span#menu_button{
+        display:block;
+        position: absolute;
+        top: 250px;
+        left: 10px;
+        font-size:1.75em;
+    }
+    
+    .sidenav {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #159957; background-image: linear-gradient(120deg, #155799, #159957);
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+    display:block;
+}
+
+.sidenav a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 1.75em;
+    color: #fff;
+    display: block;
+    transition: 0.3s;
+}
+
+.sidenav a:hover {
+    color: #f1f1f1;
+}
+
+.sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+}
+
+    
 }
 
 /*! normalize.css v3.0.2 | MIT License | git.io/normalize */
