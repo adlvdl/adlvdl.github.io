@@ -63,7 +63,14 @@ function closeNav() {
 	</section>
 	
 	<section class="main-content">
-		<h2>Previous research</h2>
+	<h2>Previous research</h2>
+        <h3>Machine learning</h3>
+		Machine learning generates mathematical models that can predict a range of properties given a suitable training data.
+        I first worked on using matched molecular pairs (see below) as input to predict changes in activity caused by these small chemical modifications.
+        I also analyzed how missing data affects the performance of multitask machine learning.
+        This provided a first aproximation of how much performance can be gained by testing new compound-assay combinations.
+ 		<img src="images/missing_data.png" style="margin-top: 1rem;">
+    
 		<h3>Visualization of chemical space</h3>
 		Chemical space is the collection of all possible compounds that are physically possible.
 		Although not all possible compounds have been synthesized and characterized, public and private collections of compounds have become very large.
@@ -72,26 +79,20 @@ function closeNav() {
 		A large part of my thesis was dedicated to the design and development of visualization to explore complex, high-dimensional chemical spaces.
 		I expanded on the chemical space network concept to generate coordinate-free representations of a coordinate-based chemical space, as well as introducing a layout algorithm to provide a global view character to these networks.
 		Chemical space views that provide clear regions where favorable compounds are separated from unfavorable were generated to help in multi-objective compound design.
-		
+		I also worked in a collaboration with Pfizer scientists to assess the progression of a lead optimization series using SAR matrices and visualizations.
 		<img src="images/visualizations.png" style="margin-top: 1rem;">
 	
-	</section>
-	
-	<section class="main-content">
 		<h3>Matched molecular pairs</h3>
 		Matched molecular pairs are compound pairs that share a large commong substructure but differ at a specific site.
 		They constitute an intuitive way to represent chemical similarity and have become increasingly important for molecular design.
 		I performed as part of my thesis several data mining analysis of matched molecular pairs on public databases such as PubChem and ChEMBL.
 		This analysis focused on how the structural modification encoded on these pairs changed physico-chemical properties like activity or ionizability.
-		Additionally, machine learning models were used to learn the effect of the chemical modification on activity.
 		Finally, I proposed an extension of the concept by taking a retrosynthetic approach during the generation of pairs.
 		
 		<img src="images/mmps.png" style="margin-top: 1rem;">
 	
 	
-	</section>
 	
-	<section class="main-content">
 		<h3>Molecular modelling</h3>
 		Docking of compounds on protein binding pockets provides hypothesis on the binding conformation of molecules that can be used for further optimization.
 		I assisted medicinal chemistry groups by performing docking studies on compound series in order to better understand the differences in activity present between the compounds.
@@ -101,9 +102,7 @@ function closeNav() {
 		<img src="images/modeling.png" style="margin-top: 1rem;">
 	
 	
-	</section>
 	
-	<section class="main-content">
 		<h3>Bioinformatics</h3>
 		During the last year of my undergraduate I was part of the workgroup of Prof. Julian Perera.
 		They had obtained partial results of the sequencing of Rhodococcus ruber Strain Chol-4.
