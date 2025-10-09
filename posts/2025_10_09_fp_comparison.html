@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+<head>
+    <meta charset="utf-8">
+	
+    <title>Outreach - Antonio de la Vega</title>
+    <!-- Bootstrap -->
+	<link href="../css/external_style.css" rel="stylesheet" type="text/css">
+	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+
+
+  </head>
+  <body>
+	  <article>
+	<section class="page-header">
+      <h1 class="project-name">Antonio de la Vega de León</h1>
+      <h2 class="project-tagline">AI/ML expert for Drug Discovery</h2>
+      <span style="cursor:pointer" onclick="openNav()" id='menu_button'>&#9776; Menu</span>
+      
+
+    
+    <nav id ="slide_nav" class='sidenav'>
+        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+		<ul style="list-style-type: none;">
+		<li><a href="../index.html">Home</a></li>
+		<li><a href="../research.html">Research</a></li>
+		<li><a href="../publications.html">Publications</a></li>
+		<li><a href="../outreach.html">Outreach</a></li>
+		<li><a href="../teaching.html">Teaching</a></li>
+		<li><a href="../cv.pdf">CV</a></li>
+		</ul>
+	</nav>    
+      
+    </section>
+	<nav id ="left_nav">
+		<ul style="list-style-type: none">
+		<li><a href="../index.html">Home</a></li>
+		<li><a href="../research.html">Research</a></li>
+		<li><a href="../publications.html">Publications</a></li>
+		<li><a href="../outreach.html">Outreach</a></li>
+		<li><a href="../teaching.html">Teaching</a></li>
+		<li><a href="../cv.pdf">CV</a></li>
+		</ul>
+	</nav>
+		
+	
+	
+	<section class="main-content">
+	<h1>Fingerprint comparison</h1>
+	<p>
+	I recently read a very interesting <a href="https://pubs.acs.org/doi/10.1021/acs.jcim.5c01609">paper</a> from the team at <a href="https://polarishub.io/">Polaris</a> on how best to compare ML models. 
+	Some of their recommendations I was already doing, the part about comparing distributions of performance values from different versions of a model. 
+	I would usually run models with 10 different seed values and use a boxplot to compare distributions. 
+	But I never knew how to perform statistical testing to say if the models were different. 
+	This paper provides a template to do just that. 
+	</p>
+	<p>
+	I decided to implement the work on the paper and add it to my toolbox of chemoinformatics code. 
+	This was very quick thanks to the large amount of code the team made available. 
+	Once I made sure it worked in a few toy examples, I looked for a question to answer for a larger scale test. 
+	And I came back to a classic chemoinformatics question: which fingerprint is better to train ML models?
+	</p>
+	</section>
+
+	<section class="main-content">
+	<h3>Experimental setup</h3>
+	<p>
+	I extracted a set of 281 activity prediction datasets from <a href="https://jcheminf.biomedcentral.com/articles/10.1186/s13321-022-00672-x">Papyrus</a>. 
+	Based on their high-quality subset, I extracted all combinations of protein target and measurement (K<sub>i</sub>, IC<sub>50</sub>,…) which contained over 500 records. 
+	Papyrus provides log unit measurements and I added a classification label to active/inactive using a threshold value of 6.5 log units. 
+	Datasets with under 10% or over 90% of active compounds were removed to exclude the most imbalanced datasets.
+	</p>
+	<p>
+	For each dataset, I calculated four different fingerprints using RDKit: Morgan (radius 2), RDKit, Torsion and MACCS. 
+	All fingerprints except MACCS were folded to 2048 bits. 
+	Other parameters were left with default values.
+	</p>
+	<p>
+	Given a dataset and fingerprint combination, 2 ML algorithms were used to train models: 
+	Random Forest (RF) implemented in scikit and Gradient Boosted Trees (GBT) implemented in xgboost. 
+	Both classification and regression models were trained. 
+	For training, the data was first split in training and testing using a 5x5 cross validation technique described in the paper. 
+	In 5x5 cross validation, 5 different rounds of 5-fold cross validation are performed. 
+	The training set was further subdivided into 90% training and 10% validation, which was used for early termination in GBT but not in RF. 
+	I performed no hyperparameter optimization on the model parameters.
+	</p>
+	<p>
+	The final number of models trained were: 
+	25 (cv folds) x 4 (RF & GBT in class and reg) x 4 (fingerprints) x 281 (papyrus datasets) = 112400. 
+	For each model trained I extract the following performance metrics:
+	<ul>
+	<li>classification: balanced accuracy, precision, recall, F1-score, Matthews Correlation Coefficient (MCC), Receiver Operating Characteristic-Area Under the Curve (ROC-AUC)</li>
+	<li>regression: coefficient of determination (R2), Spearman correlation (rho), Mean Absolute Error (MAE), Mean Squared Error (MSE), Root Mean Squared Error (RMSE)</li>
+	</ul>
+	</p>
+	<p>
+	Finally, for each model and metric, the Tukey's Honestly Significant Difference (HSD) test was performed using the code provided by the Polaris team. 
+	To account for the large amount of comparisons performed, a fingerprint comparison was only considered significant if its p-value was 0.0001, the lowest value provided by the function used.
+	</p>
+	</section>
+
+	<section class="main-content">
+	<h3>Results</h3>
+
+	<p>
+	As a first step, I gathered the results across all models and compared how often each fingerprint ended having the first, second, third or fourth place when ranking them based on performance. 
+	Results are not very surprising based on my previous knowledge of the field. 
+	MACCS is most often the worst of the fingerprints, not surprising considering its simplicity and the lower dimensionality compared to the other fingerprints. 
+	Morgan fingerprints has slightly higher median rank than RDKit when looking at results across all metrics, but they are very close.
+	</p>
+	<br />
+    	<br />
+	<img src="../images/20251009_fp_rank_boxplot.png" alt="Boxplot comparing distribution of rank order of fingerprints"/>
+
+	<p>
+	The interesting part came from the results of the statistical testing. Each dataset, algorithm and metric combination was classified as one of:
+	<ul>
+	<li>the best performing fingerprint was significantly different from the second fingerprint (top_different)</li>
+	<li>the best performing fingerprint was not significantly different from the second fingerprint, but was significantly different from the third (top2_same)</li>
+	<li>the best performing fingerprint was not significantly different from the second or third fingerprint, but was significantly different from the fourth (top3_same)</li>
+	<li>the best performing fingerprint was not significantly different from all other three fingerprints (all_same)</li>
+	</ul>
+	</p>
+	<p>
+	Then I looked across all datasets and algorithms and in most cases the three top fingerprints were not significantly different. 
+	Based on the first set of plots, these three are more likely to be Morgan, RDKit and Torsion fingerprints. 
+	The pattern was slightly less extreme for regression metrics than for classification metrics, but in all cases the number of cases were the best fingerprint was significantly different from the second best was very small. 
+	And there were a surprising number of cases were all four fingerprints were essentially the same.
+	</p>
+	<img src="../images/20251009_metric_piecharts.png" alt="Pie charts of different metrics on how often are FP different"/>
+	<p>
+	The results overall suggest the choice of fingerprint when training Random Forest models or Gradient Boosted Trees for activity prediction is not critical, and other than MACCS, different fingerprints calculated with RDKit in most cases will perform the same.
+	</p>
+	</section>
+	<section class="main-content">
+	<h3>Acknowledgements</h3>
+
+	I want to thank the team at Polaris and <a href="https://github.com/PatWalters/useful_rdkit_utils">Pat Walters</a> for the large amount of the code they made freely available.
+	<br />
+	<br />
+	This blogpost was proofread using Gemini 2.5 Pro and the following prompt:
+	"Assume the role of a proofreader specializing in academic writing. 
+	Your task is to review and edit a segment of an academic work that is given below. 
+	Do not rewrite the text wholesale, your task is to offer suggested changes to improve the text. 
+	Focus on ensuring clarity, conciseness, and coherence in the writing. 
+	Identify any sentences or phrases that are ambiguous, overly complex, or unnecessarily verbose, and suggest precise and succinct alternatives. 
+	Pay attention to the logical flow of ideas, ensuring that each sentence contributes effectively to the argument or narrative. 
+	Check for consistency in terminology, style, and voice throughout the document. 
+	Highlight any jargon or technical terms that may need clarification for the paper's intended audience or any acronym that has not been defined. 
+	Conclude your proofreading by verifying that the segment aligns with academic standards and enhances the overall readability and impact of the paper. "
+
+	</section>
+	
+	
+</body>
+</html>
