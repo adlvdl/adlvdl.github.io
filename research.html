@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Research — Antonio de la Vega de León</title>
+  <meta name="description" content="Research interests and history: machine learning interpretation, chemical space visualisation, cheminformatics.">
+  <script>(function(){var s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="services.html">Services</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="page-header">
+        <span class="mono-tag">← <a href="about.html">about</a></span>
+        <h1>Research</h1>
+      </div>
+
+      <!-- Current interests -->
+      <div class="about-section">
+        <h2 class="mono-tag">current interests</h2>
+        <p>
+          My research interests centre on the use of machine learning and visualisation in pharmaceutical
+          research to aid decision making. I am particularly interested in:
+        </p>
+        <ul>
+          <li>
+            <strong>Machine learning model interpretation</strong> — ML models learn associations between
+            structural elements of molecules and biological properties that are expensive to measure.
+            I develop techniques that make these models understandable, so structural insights can
+            inform compound design.
+          </li>
+          <li>
+            <strong>Visualisation of chemical space</strong> — developing novel visualisations that bridge
+            the structural information of sets of molecules to their physico-chemical and biochemical
+            properties, condensing large amounts of information into interpretable views.
+          </li>
+        </ul>
+      </div>
+
+      <!-- D3i4AD -->
+      <div class="about-section">
+        <h2 class="mono-tag">D3i4AD project</h2>
+        <p>
+          I worked as a Marie Curie fellow as part of the European project
+          <a href="https://sites.google.com/site/d3i4adiapp/" target="_blank" rel="noopener">Diagnostics
+          and Drug Discovery Initiative for Alzheimer's Disease (D3i4AD)</a>. I developed deep neural
+          networks with a dual purpose: predicting whether a compound would be active in a phenotypic
+          screen, and identifying which target in the studied pathway it acted against. These models
+          were used to screen compound libraries and to aid in the target deconvolution of hit compounds.
+        </p>
+      </div>
+
+      <!-- Machine learning -->
+      <div class="about-section">
+        <h2 class="mono-tag">machine learning</h2>
+        <p>
+          Machine learning generates mathematical models that can predict a range of properties given
+          suitable training data. I first worked on using matched molecular pairs as input to predict
+          changes in activity caused by small chemical modifications. I also analysed how missing data
+          affects the performance of multitask machine learning, providing an approximation of how much
+          performance can be gained by testing new compound–assay combinations.
+        </p>
+        <img src="images/missing_data.png" alt="Missing data analysis illustration" style="margin-top:1.25rem; max-width:100%; border-radius:4px; background-color:#ffffff; padding:0.5rem;">
+      </div>
+
+      <!-- Visualisation -->
+      <div class="about-section">
+        <h2 class="mono-tag">visualisation of chemical space</h2>
+        <p>
+          Chemical space is the collection of all physically possible compounds. Public and private
+          collections have become very large, making systematic structure–activity analysis complicated.
+          Tailored visualisations ease this analysis by providing general or focused views of chemical
+          space.
+        </p>
+        <p style="margin-top:0.75rem;">
+          A large part of my thesis was dedicated to the design and development of visualisations for
+          complex, high-dimensional chemical spaces. I expanded the chemical space network concept to
+          generate coordinate-free representations of coordinate-based chemical space, and introduced
+          a layout algorithm to provide global-view character to these networks. I also developed
+          multi-objective chemical space views and collaborated with Pfizer scientists to assess the
+          progression of lead optimisation series using SAR matrices and visualisations.
+        </p>
+        <img src="images/visualizations.png" alt="Chemical space visualisation" style="margin-top:1.25rem; max-width:100%; border-radius:4px; background-color:#ffffff; padding:0.5rem;">
+      </div>
+
+      <!-- Matched molecular pairs -->
+      <div class="about-section">
+        <h2 class="mono-tag">matched molecular pairs</h2>
+        <p>
+          Matched molecular pairs (MMPs) are compound pairs that share a large common substructure but
+          differ at a specific site. They constitute an intuitive way to represent chemical similarity
+          and have become increasingly important for molecular design. I performed several data mining
+          analyses of MMPs on public databases (PubChem, ChEMBL), focusing on how structural
+          modifications encoded in these pairs change physico-chemical properties like activity or
+          ionizability. I also proposed an extension of the MMP concept using a retrosynthetic approach
+          during pair generation.
+        </p>
+        <img src="images/mmps.png" alt="Matched molecular pairs illustration" style="margin-top:1.25rem; max-width:100%; border-radius:4px;">
+      </div>
+
+      <!-- Molecular modelling -->
+      <div class="about-section">
+        <h2 class="mono-tag">molecular modelling</h2>
+        <p>
+          Docking of compounds onto protein binding pockets provides hypotheses about binding
+          conformation that can inform further optimisation. I assisted medicinal chemistry groups
+          by performing docking studies on compound series, and worked on conformational analysis
+          of macrocycles — complex molecules possessing a large ring, many of which are interesting
+          natural products. We compared traditional conformational sampling (LowModeMD) against short
+          MD simulations to determine which better identified active conformations.
+        </p>
+        <img src="images/modeling.png" alt="Molecular modelling illustration" style="margin-top:1.25rem; max-width:100%; border-radius:4px;">
+      </div>
+
+      <!-- Bioinformatics -->
+      <div class="about-section">
+        <h2 class="mono-tag">bioinformatics</h2>
+        <p>
+          During the final year of my undergraduate degree I was part of Prof. Julian Perera's
+          workgroup. Using partial sequencing results for <em>Rhodococcus ruber</em> strain Chol-4,
+          I performed the first partial assembly of the contigs and characterised the genomic regions
+          containing the genes responsible for cholesterol degradation.
+        </p>
+      </div>
+
+      <!-- Back link -->
+      <div style="margin: 2rem 0;">
+        <a href="about.html">← Back to About</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://fediscience.org/@adlvdl" target="_blank" rel="noopener">Mastodon</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
