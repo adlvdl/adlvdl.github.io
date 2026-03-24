@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Services — Antonio de la Vega de León</title>
+  <meta name="description" content="ML and cheminformatics consulting services: QSAR modelling, ML interpretation, pipeline development, and scientific advisory.">
+  <script>(function(){var s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="services.html" class="nav-active">Services</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="page-header">
+        <span class="mono-tag">consulting</span>
+        <h1>Services</h1>
+      </div>
+
+      <p style="font-size:0.95rem; color:var(--text-2); max-width:58ch; margin-bottom:0.5rem;">
+        I work with pharmaceutical and biotech teams to apply machine learning to molecular design problems.
+        Whether you need a one-off analysis, a modelling pipeline, or ongoing scientific advisory, I can help.
+      </p>
+
+      <div class="service-list" style="margin-top:2rem;">
+
+        <div class="service-card">
+          <span class="mono-tag">modelling</span>
+          <h3>QSAR Modelling &amp; Molecular Property Prediction</h3>
+          <p>
+            Building quantitative structure–activity relationship models to predict biological activity,
+            toxicity, or physicochemical properties from molecular structure. Includes model selection,
+            validation, and benchmarking against your data.
+          </p>
+        </div>
+
+        <div class="service-card">
+          <span class="mono-tag">explainability</span>
+          <h3>ML Model Interpretation &amp; Explainability</h3>
+          <p>
+            Making black-box models understandable — identifying which structural features drive predictions,
+            flagging unreliable predictions, and generating actionable insights for medicinal chemistry teams.
+          </p>
+        </div>
+
+        <div class="service-card">
+          <span class="mono-tag">engineering</span>
+          <h3>Cheminformatics Pipeline Development</h3>
+          <p>
+            Designing and implementing end-to-end cheminformatics workflows: molecular fingerprint generation,
+            chemical space analysis, virtual screening pipelines, and matched molecular pair analysis.
+          </p>
+        </div>
+
+        <div class="service-card">
+          <span class="mono-tag">advisory</span>
+          <h3>Scientific Consulting &amp; Advisory</h3>
+          <p>
+            Strategic guidance on ML and cheminformatics approaches for your drug discovery programme.
+            Includes literature review, method selection, and review of existing models or analyses.
+          </p>
+        </div>
+
+        <div class="service-card">
+          <span class="mono-tag">education</span>
+          <h3>Teaching ML and Cheminformatics</h3>
+          <p>
+            Workshops and training sessions for research teams — from introductory machine learning for
+            chemists to advanced topics in interpretable AI and fingerprint-based modelling.
+          </p>
+        </div>
+
+      </div>
+
+      <div class="cta-strip">
+        <div>
+          <h3>Let's work together</h3>
+          <p>Tell me about your project and I'll get back to you.</p>
+        </div>
+        <a href="about.html#contact" class="btn-primary">Get in touch</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://fediscience.org/@adlvdl" target="_blank" rel="noopener">Mastodon</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>

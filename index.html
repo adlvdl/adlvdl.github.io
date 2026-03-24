@@ -1,97 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <link href="https://fediscience.org/@adlvdl" rel="me">
-	
-    <title>Antonio de la Vega</title>
-    <!-- Bootstrap -->
-	<link href="css/external_style.css" rel="stylesheet" type="text/css">
-	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antonio de la Vega de León — ML Consulting</title>
+  <meta name="description" content="Machine learning and cheminformatics consulting for drug discovery. QSAR modelling, ML interpretation, and AI for novel drug targets.">
+  <link href="https://fediscience.org/@adlvdl" rel="me">
+  <script>(function(){var s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
 
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="nav-active">Home</a></li>
+      <li><a href="services.html">Services</a></li>
+      <li><a href="blog.html">Blog</a></li>
+      <li><a href="publications.html">Publications</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
 
-  </head>
-  <body>
-	<article>
-	<section class="page-header">
-      <h1 class="project-name">Antonio de la Vega de León</h1>
-      <h2 class="project-tagline">AI/ML expert for Drug Discovery</h2>
-      <span style="cursor:pointer" onclick="openNav()" id='menu_button'>&#9776; Menu</span>
-      
+  <section class="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-left">
+          <span class="mono-tag anim-1">ml-consulting / cheminformatics</span>
+          <span class="hero-name anim-2">Antonio de la Vega de León</span>
+          <h1 class="anim-3">Machine Learning<br>for <em>Drug Discovery</em></h1>
+          <p class="hero-body anim-4">
+            I help pharmaceutical and biotech teams apply machine learning
+            to molecular design — from QSAR modelling and fingerprint methods
+            to interpretable AI for novel drug targets.
+          </p>
+          <div class="hero-actions anim-5">
+            <a href="about.html#contact" class="btn-primary">Get in touch</a>
+            <a href="services.html" class="btn-secondary">View services →</a>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-value">26+</div>
+            <div class="stat-label">peer-reviewed publications</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">10+</div>
+            <div class="stat-label">years in cheminformatics</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">PhD</div>
+            <div class="stat-label">ML &amp; computational chemistry</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-    
-    <nav id ="slide_nav" class='sidenav'>
-        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-		<ul style="list-style-type: none;">
-		<li><a href="index.html">Home</a></li>
-		<li><a href="research.html">Research</a></li>
-		<li><a href="publications.html">Publications</a></li>
-		<li><a href="outreach.html">Outreach</a></li>
-		<li><a href="teaching.html">Teaching</a></li>
-		<li><a href="cv.pdf">CV</a></li>
-		</ul>
-	</nav>    
-      
-    </section>
-	<nav id ="left_nav">
-		<ul style="list-style-type: none">
-		<li><a href="index.html">Home</a></li>
-		<li><a href="research.html">Research</a></li>
-		<li><a href="publications.html">Publications</a></li>
-		<li><a href="outreach.html">Outreach</a></li>
-		<li><a href="teaching.html">Teaching</a></li>
-		<li><a href="cv.pdf">CV</a></li>
-		</ul>
-	</nav>
-		
-	<section class="main-content">
-		<h1 id="welcome">Welcome</h1>
-		<img src="images/portrait_small.jpg" alt="my photo" style="float:right; margin-top: 1rem; ">
-		Hi, I'm Antonio de la Vega de León. 
-		I am a chemoinformatician and ML/AI expert focused on the development and implementation of novel machine learning strategies to guide the discovery of novel drugs. 
-		My expertise lies on the implementation, interpretation and characterization of machine learning models to predict biological endpoints of interest, with a focus on prioritizing molecular glues for screening at complex phenotypic assays. 
-		<br />
-		<br />
-		Previously, I worked as a postdoctoral researcher at the University of Sheffield, as part of a Marie Curie project against Alzheimer's disease (<a href="https://sites.google.com/site/d3i4adiapp/">D3i4AD</a>).
-		I originally studied Biology in Madrid and decided, when I was finishing, to focus on bioinformatics.
-		I went to Bonn to do the Life Science Informatics masters.
-		There I was introduced into chemoinformatics by Prof. Jürgen Bajorath, with whom I did my master's thesis and then my PhD.
-		<br />
-		<br />
-		With this website, I want to show the research I have done and that I am currently working in.
-		You can also see the outreach events I have been involved with and also the teaching I have been involved with.
-		The links below go to my profile in different social media from where you can get in touch with me.
-		<br /><br />
-		<a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon">ResearchGate</a>
-		<br />               
-		<a href="https://www.linkedin.com/in/adlvdl/">LinkedIn</a>
-		<br />               
-		<a href="https://orcid.org/0000-0003-0927-2099">ORCID</a>
-        	<br />               
-		<a href="https://fediscience.org/@adlvdl">Mastodon</a>
-		
-	
-		
-	<footer class="site-footer">    
-         
-        <span class="site-footer-credits">This page was heavily based on <a href="https://pages.github.com">GitHub Pages</a>.</span>
-      </footer>	
-	
-		
-		
-	
-		
-	</section>
-	
-	</article>
-          <script>
-function openNav() {
-    document.getElementById("slide_nav").style.width = "250px";
-}
+  <div class="container">
+  <div class="section-cards">
+    <a class="section-card" href="services.html">
+      <span class="mono-tag">services</span>
+      <h3>Consulting</h3>
+      <p>QSAR modelling, fingerprint analysis, ML model interpretation, and drug target prediction for biotech and pharma teams.</p>
+      <span class="card-link">View services ›</span>
+    </a>
+    <a class="section-card" href="blog.html">
+      <span class="mono-tag">writing</span>
+      <h3>Blog</h3>
+      <p>Technical posts on machine learning methods, cheminformatics experiments, and applied data science for drug discovery.</p>
+      <span class="card-link">Read the blog ›</span>
+    </a>
+    <a class="section-card" href="about.html">
+      <span class="mono-tag">background</span>
+      <h3>About</h3>
+      <p>Postdoctoral researcher at the University of Sheffield, PhD in cheminformatics, working on ML strategies for Alzheimer's drug discovery.</p>
+      <span class="card-link">About me ›</span>
+    </a>
+  </div>
+  </div>
 
-function closeNav() {
-    document.getElementById("slide_nav").style.width = "0";
-}
-</script>
-  </body>
+  <div class="container">
+  <div class="post-strip">
+    <span class="post-strip-label">latest post</span>
+    <div class="post-strip-content">
+      <a class="post-strip-title" href="posts/2025_10_09_fp_comparison.html">Fingerprint Comparison for Machine Learning Models</a>
+      <span class="post-strip-meta">2025-10-09 · cheminformatics</span>
+    </div>
+    <a class="post-strip-link" href="posts/2025_10_09_fp_comparison.html">Read post ›</a>
+  </div>
+  </div>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://fediscience.org/@adlvdl" target="_blank" rel="noopener">Mastodon</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) {
+        el.textContent = next;
+      });
+    }
+
+    function toggleNav() {
+      document.getElementById('site-nav').classList.toggle('nav-open');
+    }
+
+    // Close mobile nav on outside click
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) {
+        nav.classList.remove('nav-open');
+      }
+    });
+
+    // Close mobile nav on link click
+    document.querySelectorAll('.nav-links a').forEach(function(link) {
+      link.addEventListener('click', function() {
+        document.getElementById('site-nav').classList.remove('nav-open');
+      });
+    });
+
+    // Sync theme toggle label on load
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) {
+        el.textContent = theme;
+      });
+    })();
+  </script>
+</body>
 </html>

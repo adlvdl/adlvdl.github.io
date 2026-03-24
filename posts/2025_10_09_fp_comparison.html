@@ -1,158 +1,181 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<head>
-    <meta charset="utf-8">
-	
-    <title>Blog Post - Antonio de la Vega</title>
-    <!-- Bootstrap -->
-	<link href="../css/external_style.css" rel="stylesheet" type="text/css">
-	<link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fingerprint Comparison for ML Models — delavega.ai</title>
+  <meta name="description" content="Comparing Morgan, RDKit, Torsion, and MACCS fingerprints across 281 activity prediction datasets using Random Forest and Gradient Boosted Trees.">
+  <script>(function(){var s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+</head>
+<body>
 
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
 
-  </head>
-  <body>
-	  <article>
-	<section class="page-header">
-      <h1 class="project-name">Antonio de la Vega de León</h1>
-      <h2 class="project-tagline">AI/ML expert for Drug Discovery</h2>
-      <span style="cursor:pointer" onclick="openNav()" id='menu_button'>&#9776; Menu</span>
-      
+  <main>
+    <div class="container">
 
-    
-    <nav id ="slide_nav" class='sidenav'>
-        <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
-		<ul style="list-style-type: none;">
-		<li><a href="../index.html">Home</a></li>
-		<li><a href="../research.html">Research</a></li>
-		<li><a href="../publications.html">Publications</a></li>
-		<li><a href="../outreach.html">Outreach</a></li>
-		<li><a href="../teaching.html">Teaching</a></li>
-		<li><a href="../cv.pdf">CV</a></li>
-		</ul>
-	</nav>    
-      
-    </section>
-	<nav id ="left_nav">
-		<ul style="list-style-type: none">
-		<li><a href="../index.html">Home</a></li>
-		<li><a href="../research.html">Research</a></li>
-		<li><a href="../publications.html">Publications</a></li>
-		<li><a href="../outreach.html">Outreach</a></li>
-		<li><a href="../teaching.html">Teaching</a></li>
-		<li><a href="../cv.pdf">CV</a></li>
-		</ul>
-	</nav>
-		
-	
-	
-	<section class="main-content">
-	<h1>Fingerprint comparison</h1>
-	<p>
-	I recently read a very interesting <a href="https://pubs.acs.org/doi/10.1021/acs.jcim.5c01609">paper</a> from the team at <a href="https://polarishub.io/">Polaris</a> on how best to compare ML models. 
-	Some of their recommendations I was already doing, the part about comparing distributions of performance values from different versions of a model. 
-	I would usually run models with 10 different seed values and use a boxplot to compare distributions. 
-	But I never knew how to perform statistical testing to say if the models were different. 
-	This paper provides a template to do just that. 
-	</p>
-	<p>
-	I decided to implement the work on the paper and add it to my toolbox of chemoinformatics code. 
-	This was very quick thanks to the large amount of code the team made available. 
-	Once I made sure it worked in a few toy examples, I looked for a question to answer for a larger scale test. 
-	And I came back to a classic chemoinformatics question: which fingerprint is better to train ML models?
-	</p>
-	</section>
+      <div class="post-header">
+        <span class="post-date">2025-10-09</span>
+        <span class="mono-tag">cheminformatics</span>
+        <h1>Fingerprint Comparison for Machine Learning Models</h1>
+      </div>
 
-	<section class="main-content">
-	<h3>Experimental setup</h3>
-	<p>
-	I extracted a set of 281 activity prediction datasets from <a href="https://jcheminf.biomedcentral.com/articles/10.1186/s13321-022-00672-x">Papyrus</a>. 
-	Based on their high-quality subset, I extracted all combinations of protein target and measurement (K<sub>i</sub>, IC<sub>50</sub>,…) which contained over 500 records. 
-	Papyrus provides log unit measurements and I added a classification label to active/inactive using a threshold value of 6.5 log units. 
-	Datasets with under 10% or over 90% of active compounds were removed to exclude the most imbalanced datasets.
-	</p>
-	<p>
-	For each dataset, I calculated four different fingerprints using RDKit: Morgan (radius 2), RDKit, Torsion and MACCS. 
-	All fingerprints except MACCS were folded to 2048 bits. 
-	Other parameters were left with default values.
-	</p>
-	<p>
-	Given a dataset and fingerprint combination, 2 ML algorithms were used to train models: 
-	Random Forest (RF) implemented in scikit and Gradient Boosted Trees (GBT) implemented in xgboost. 
-	Both classification and regression models were trained. 
-	For training, the data was first split in training and testing using a 5x5 cross validation technique described in the paper. 
-	In 5x5 cross validation, 5 different rounds of 5-fold cross validation are performed. 
-	The training set was further subdivided into 90% training and 10% validation, which was used for early termination in GBT but not in RF. 
-	I performed no hyperparameter optimization on the model parameters.
-	</p>
-	<p>
-	The final number of models trained were: 
-	25 (cv folds) x 4 (RF & GBT in class and reg) x 4 (fingerprints) x 281 (papyrus datasets) = 112400. 
-	For each model trained I extract the following performance metrics:
-	<ul>
-	<li>classification: balanced accuracy, precision, recall, F1-score, Matthews Correlation Coefficient (MCC), Receiver Operating Characteristic-Area Under the Curve (ROC-AUC)</li>
-	<li>regression: coefficient of determination (R2), Spearman correlation (rho), Mean Absolute Error (MAE), Mean Squared Error (MSE), Root Mean Squared Error (RMSE)</li>
-	</ul>
-	</p>
-	<p>
-	Finally, for each model and metric, the Tukey's Honestly Significant Difference (HSD) test was performed using the code provided by the Polaris team. 
-	To account for the large amount of comparisons performed, a fingerprint comparison was only considered significant if its p-value was 0.0001, the lowest value provided by the function used.
-	</p>
-	</section>
+      <div class="post-body">
 
-	<section class="main-content">
-	<h3>Results</h3>
+        <p>
+          I recently read a very interesting <a href="https://pubs.acs.org/doi/10.1021/acs.jcim.5c01609">paper</a>
+          from the team at <a href="https://polarishub.io/">Polaris</a> on how best to compare ML models.
+          Some of their recommendations I was already following — comparing distributions of performance
+          values from different versions of a model, typically running models with 10 different seed values
+          and using a boxplot to compare distributions. But I never knew how to perform statistical testing
+          to say if the models were different. This paper provides a template to do just that.
+        </p>
+        <p>
+          I decided to implement the work in the paper and add it to my toolbox of cheminformatics code.
+          This was very quick thanks to the large amount of code the team made available. Once I confirmed
+          it worked on a few toy examples, I looked for a question to answer at larger scale: which
+          fingerprint is better to train ML models?
+        </p>
 
-	<p>
-	As a first step, I gathered the results across all models and compared how often each fingerprint ended having the first, second, third or fourth place when ranking them based on performance. 
-	Results are not very surprising based on my previous knowledge of the field. 
-	MACCS is most often the worst of the fingerprints, not surprising considering its simplicity and the lower dimensionality compared to the other fingerprints. 
-	Morgan fingerprints has slightly higher median rank than RDKit when looking at results across all metrics, but they are very close.
-	</p>
-	<br />
-    	<br />
-	<img src="../images/20251009_fp_rank_boxplot.png" alt="Boxplot comparing distribution of rank order of fingerprints"/>
+        <h3>Experimental setup</h3>
+        <p>
+          I extracted a set of 281 activity prediction datasets from
+          <a href="https://jcheminf.biomedcentral.com/articles/10.1186/s13321-022-00672-x">Papyrus</a>.
+          Based on their high-quality subset, I extracted all combinations of protein target and measurement
+          (K<sub>i</sub>, IC<sub>50</sub>, …) containing over 500 records. Papyrus provides log unit
+          measurements; I added a classification label (active/inactive) using a threshold of 6.5 log units.
+          Datasets with under 10% or over 90% active compounds were removed to exclude the most imbalanced cases.
+        </p>
+        <p>
+          For each dataset, I calculated four fingerprints using RDKit: Morgan (radius 2), RDKit, Torsion,
+          and MACCS. All fingerprints except MACCS were folded to 2048 bits; other parameters were left
+          at default values.
+        </p>
+        <p>
+          Given a dataset and fingerprint combination, two ML algorithms were trained: Random Forest (RF,
+          scikit-learn) and Gradient Boosted Trees (GBT, XGBoost). Both classification and regression models
+          were trained. Data was split using the 5×5 cross-validation technique described in the paper —
+          five rounds of 5-fold cross-validation, with a 90/10 training/validation split used for early
+          termination in GBT. No hyperparameter optimisation was performed.
+        </p>
+        <p>
+          Total models trained: 25 (CV folds) × 4 (RF &amp; GBT, classification &amp; regression) × 4
+          (fingerprints) × 281 (datasets) = <strong>112,400</strong>. Performance metrics extracted per model:
+        </p>
+        <ul>
+          <li><strong>Classification:</strong> balanced accuracy, precision, recall, F1-score, Matthews
+          Correlation Coefficient (MCC), ROC-AUC</li>
+          <li><strong>Regression:</strong> R², Spearman correlation (ρ), MAE, MSE, RMSE</li>
+        </ul>
+        <p>
+          For each model and metric, Tukey's Honestly Significant Difference (HSD) test was applied using
+          code provided by the Polaris team. To account for the large number of comparisons, a difference
+          was only considered significant at p &lt; 0.0001 — the lowest value provided by the function used.
+        </p>
 
-	<p>
-	The interesting part came from the results of the statistical testing. Each dataset, algorithm and metric combination was classified as one of:
-	<ul>
-	<li>the best performing fingerprint was significantly different from the second fingerprint (top_different)</li>
-	<li>the best performing fingerprint was not significantly different from the second fingerprint, but was significantly different from the third (top2_same)</li>
-	<li>the best performing fingerprint was not significantly different from the second or third fingerprint, but was significantly different from the fourth (top3_same)</li>
-	<li>the best performing fingerprint was not significantly different from all other three fingerprints (all_same)</li>
-	</ul>
-	</p>
-	<p>
-	Then I looked across all datasets and algorithms and in most cases the three top fingerprints were not significantly different. 
-	Based on the first set of plots, these three are more likely to be Morgan, RDKit and Torsion fingerprints. 
-	The pattern was slightly less extreme for regression metrics than for classification metrics, but in all cases the number of cases were the best fingerprint was significantly different from the second best was very small. 
-	And there were a surprising number of cases were all four fingerprints were essentially the same.
-	</p>
-	<img src="../images/20251009_metric_piecharts.png" alt="Pie charts of different metrics on how often are FP different"/>
-	<p>
-	The results overall suggest the choice of fingerprint when training Random Forest models or Gradient Boosted Trees for activity prediction is not critical, and other than MACCS, different fingerprints calculated with RDKit in most cases will perform the same.
-	</p>
-	</section>
-	<section class="main-content">
-	<h3>Acknowledgements</h3>
+        <h3>Results</h3>
+        <p>
+          As a first step, I gathered results across all models and compared how often each fingerprint
+          ranked first, second, third, or fourth by performance. Results were not particularly surprising.
+          MACCS was most often the worst performer — not unexpected given its simplicity and lower
+          dimensionality. Morgan fingerprints had a slightly higher median rank than RDKit across all metrics,
+          but they were very close.
+        </p>
 
-	I want to thank the team at Polaris and <a href="https://github.com/PatWalters/useful_rdkit_utils">Pat Walters</a> for the large amount of the code they made freely available.
-	<br />
-	<br />
-	This blogpost was proofread using Gemini 2.5 Pro and the following prompt:
-	"Assume the role of a proofreader specializing in academic writing. 
-	Your task is to review and edit a segment of an academic work that is given below. 
-	Do not rewrite the text wholesale, your task is to offer suggested changes to improve the text. 
-	Focus on ensuring clarity, conciseness, and coherence in the writing. 
-	Identify any sentences or phrases that are ambiguous, overly complex, or unnecessarily verbose, and suggest precise and succinct alternatives. 
-	Pay attention to the logical flow of ideas, ensuring that each sentence contributes effectively to the argument or narrative. 
-	Check for consistency in terminology, style, and voice throughout the document. 
-	Highlight any jargon or technical terms that may need clarification for the paper's intended audience or any acronym that has not been defined. 
-	Conclude your proofreading by verifying that the segment aligns with academic standards and enhances the overall readability and impact of the paper. "
+        <img src="../images/20251009_fp_rank_boxplot.png" alt="Boxplot comparing distribution of rank order of fingerprints">
 
-	</section>
-	
-	
+        <p>
+          The more interesting results came from the statistical testing. Each dataset, algorithm, and metric
+          combination was classified as one of:
+        </p>
+        <ul>
+          <li><strong>top_different</strong> — the best fingerprint was significantly different from the second</li>
+          <li><strong>top2_same</strong> — top two were not significantly different, but differed from third</li>
+          <li><strong>top3_same</strong> — top three were not significantly different, but differed from fourth</li>
+          <li><strong>all_same</strong> — no significant difference between any of the four fingerprints</li>
+        </ul>
+        <p>
+          Looking across all datasets and algorithms, in most cases the three top fingerprints were not
+          significantly different. Based on the ranking results, these three are most likely Morgan, RDKit,
+          and Torsion. The pattern was slightly less extreme for regression than classification metrics, but
+          in all cases the number of instances where the best fingerprint was significantly better than the
+          second was very small. There was also a surprising number of cases where all four fingerprints
+          performed essentially the same.
+        </p>
+
+        <img src="../images/20251009_metric_piecharts.png" alt="Pie charts showing how often fingerprints are statistically different across metrics">
+
+        <p>
+          Overall, the results suggest that the choice of fingerprint when training Random Forest or Gradient
+          Boosted Trees for activity prediction is not critical. Other than MACCS, different fingerprints
+          calculated with RDKit will in most cases perform equivalently.
+        </p>
+
+        <h3>Acknowledgements</h3>
+        <p>
+          I want to thank the team at Polaris and
+          <a href="https://github.com/PatWalters/useful_rdkit_utils">Pat Walters</a> for the large amount
+          of code they made freely available.
+        </p>
+        <p>
+          This post was proofread using Gemini 2.5 Pro with an academic proofreading prompt focused on
+          clarity, conciseness, and coherence.
+        </p>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://fediscience.org/@adlvdl" target="_blank" rel="noopener">Mastodon</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
 </body>
 </html>
-
