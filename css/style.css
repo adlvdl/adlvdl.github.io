@@ -400,7 +400,7 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
 
 .stat-label {
   font-family: 'Lexend', sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.9rem;
   font-weight: 300;
   color: var(--text-3);
   letter-spacing: 0.04em;
