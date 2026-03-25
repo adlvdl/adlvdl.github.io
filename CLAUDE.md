@@ -90,13 +90,15 @@ Winter/cold/mathematical. Precise, restrained, human. Not generic "AI slop."
 
 ### Theme inline script (first thing in every page `<head>`)
 ```html
-<script>(function(){var s=localStorage.getItem('theme'),p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);})();</script>
+<script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
 ```
+
+The script sets `data-theme` on `<html>` and also applies `backgroundColor` directly to prevent a grey flash in Firefox before CSS loads. `localStorage` access is wrapped in try-catch to handle Firefox Enhanced Tracking Protection / `resistFingerprinting` blocking storage, which would otherwise crash the script and leave `data-theme` unset.
 
 
 ## 5. Blog
 
-- Blog index: `blog.html` — list newest-first, each entry: date (mono) · title (link) · topic tag (mono, `--ice`)
+- Blog index: `blog.html` — list newest-first, each entry: date (mono) · title (link) · topic tag (mono, `--ice` in dark / `--accent-2` in light)
 - Individual posts: `posts/YYYY_MM_DD_slug.html`
 - **Latest post strip on homepage is hardcoded** — update it manually when a new post is added
 - Also update the blog list entry in `blog.html` and the blog posts section in `publications.html`
@@ -105,6 +107,8 @@ Winter/cold/mathematical. Precise, restrained, human. Not generic "AI slop."
 ## 6. Adding a new page
 
 Copy the nav/footer/script block from any existing page. Set the correct `class="nav-active"` on the matching nav link. Wrap main content in `<div class="container">`. Use `class="page-header"` for the page title section.
+
+Footer social links order: LinkedIn → ORCID → ResearchGate. No Mastodon link.
 
 
 

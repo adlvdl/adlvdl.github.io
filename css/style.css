@@ -141,6 +141,11 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
   margin-bottom: 0.6rem;
 }
 
+:root .mono-tag,
+[data-theme="light"] .mono-tag {
+  color: var(--accent-2);
+}
+
 .subtitle {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
@@ -332,10 +337,10 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
 
 .hero-name {
   font-family: 'Lexend', sans-serif;
-  font-size: 0.7rem;
+  font-size: 1.0rem;
   font-weight: 200;
   color: var(--text-3);
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 0.4rem;
   display: block;
