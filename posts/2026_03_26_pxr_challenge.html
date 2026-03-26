@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joining the OpenADMET PXR Blind Challenge — delavega.ai</title>
+  <meta name="description" content="I am entering the OpenADMET blind challenge for predicting human PXR induction. Here is why and what I plan to do.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-03-26</span>
+        <span class="mono-tag">machine learning</span>
+        <h1>Joining the OpenADMET PXR Blind Challenge</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          The <a href="https://openadmet.ghost.io">OpenADMET group</a> has announced a new blind challenge:
+          predicting human Pregnane X Receptor (hPXR) induction.
+          PXR is a nuclear receptor that, when activated, upregulates drug-metabolising enzymes — most notably CYP3A4.
+          A compound that induces PXR can reduce the plasma concentration of co-administered drugs, cause adverse
+          interactions, and derail a project that was otherwise going well.
+          It is a common and expensive failure mode in drug development.
+          The challenge has two tracks: one for activity prediction and one for structure prediction.
+          I plan to enter only the activity prediction track.
+        </p>
+
+        <figure>
+          <img src="../images/pxr_protein_structure.png" alt="Crystal structure of the human PXR ligand-binding domain (PDB: 1ILG)">
+          <figcaption>
+            Crystal structure of the human Pregnane X Receptor ligand-binding domain (PDB: 1ILG).
+            <a href="https://commons.wikimedia.org/wiki/User:Emw" target="_blank" rel="noopener">Emw</a>,
+            <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>,
+            via Wikimedia Commons.
+          </figcaption>
+        </figure>
+
+        <h3>Why I am doing this</h3>
+
+        <p>
+          Blind challenges are the closest thing to a real prospective test outside pharma and biotech companies.
+          Internal cross-validation, however carefully designed, will generally be a less realistic scenario and
+          inflate performance values. A blind challenge can be an extremely useful tool to compare different ML
+          approaches in something close to a real setting.
+        </p>
+        <p>
+          I also want my work to be useful beyond the final ranking. Each step — data analysis, model selection,
+          split strategy, prospective evaluation — will be documented openly. The goal is to create a worked
+          example of how to approach a real ML problem in drug discovery. I hope it can be an educational resource.
+        </p>
+
+        <h3>The challenge</h3>
+
+        <p>
+          The dataset is substantial: over 11,000 compounds screened in a single dose format and a subset of
+          ~4800 compounds tested in a dose-response assay, with a counter-assay in a PXR-null cell line to flag
+          false positives. The test set focuses on structure-activity relationships — analogue series rather than
+          diverse screening hits — which mirrors real lead optimisation work more closely than a random held-out set.
+        </p>
+
+        <figure>
+          <img src="../images/pxr_challenge_dataset_flow.png" alt="Overview of the OpenADMET PXR challenge dataset and assay workflow">
+          <figcaption>
+            Dataset and assay flow for the OpenADMET PXR Induction Challenge.
+            Image courtesy of the <a href="https://openadmet.ghost.io/announcing-the-next-openadmet-blind-challenge-predicting-pxr-induction/" target="_blank" rel="noopener">OpenADMET group</a>.
+          </figcaption>
+        </figure>
+        <br>
+        <p>
+          The task is to predict pEC50 values for 513 compounds. Submissions are evaluated by Relative Absolute
+          Error (RAE). There are two phases: a live leaderboard on an initial analogue set (Phase 1, due May 25),
+          followed by a fully blinded second analogue set (Phase 2, due July 1).
+        </p>
+
+        <h3>What I plan to do</h3>
+
+        <p>My work is documented in a <a href="https://github.com/adlvdl/pxr_challenge" target="_blank" rel="noopener">public repository</a>. The short version of my expected workflow is:</p>
+
+        <ol>
+          <li><strong>Data analysis and preprocessing</strong>: download the data, explore general SAR character
+          of the dataset, think whether any compound data is better removed or altered for training, explore
+          public datasets that might enhance the prediction</li>
+          <li><strong>Generate data splits</strong>: as we will be comparing ML model predictions to choose the
+          best one, I plan to follow the process outlined in a recent paper by the Polaris group to generate 5×5
+          cross-validated data splits to make statistically sound comparisons. The main point to explore is
+          whether to generate random, scaffold or time based splits</li>
+          <li><strong>Generate single task baseline</strong>: this will likely be a comparison from different
+          fingerprints used on RF and XGB as well as chemprop</li>
+          <li><strong>Explore multitask settings and/or finetuning models for property prediction</strong>:
+          previous challenges showed the impact of external data to improve predictions so this will be an
+          important aspect. It is also possible that different data available in the challenge can be modeled
+          separately in this manner</li>
+          <li><strong>Provide predictions for analog set 1</strong>: this held out dataset will be unblinded in
+          the middle of the challenge. This will provide important information for how the different models
+          performed prospectively and might suggest alterations before submitting predictions for analog set 2</li>
+          <li><strong>Provide predictions for analog set 2</strong>: this will be the final step and will be
+          the set to provide the final ranking</li>
+        </ol>
+
+        <p>
+          The implementation will use open-source libraries (RDKit, scikit-learn, XGBoost, chemprop) and the
+          code will be organized in marimo notebooks. The analysis decisions are mine but I will use Claude Code
+          as a development tool.
+        </p>
+        <p>
+          Updates will be posted in this blog as the work progresses.
+        </p>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
