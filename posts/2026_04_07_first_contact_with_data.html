@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR challenge #0: First contact with the data — delavega.ai</title>
+  <meta name="description" content="A first quality control pass on the OpenADMET PXR induction challenge datasets: data organization principles, duplicate detection with InChIKey, and early discrepancies.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-04-07</span>
+        <span class="mono-tag">machine learning</span>
+        <h1>PXR challenge #0: First contact with the data</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          The OpenADMET challenge started last week right in the middle of Semana Santa here in Spain.
+          So I spent just a bit of time to make sure I had access to the datasets and providing a
+          preliminary look at the data provided. You can look at the code at
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/0_check_datasets.py" target="_blank" rel="noopener">this notebook</a>.
+        </p>
+
+        <h3>Data organization</h3>
+
+        <p>
+          One of the first tasks on any project is laying out your data organization principles. In an
+          organization, you might have access to a well maintained data repository to access raw data and
+          save processed data. If that is not the case, my general rule of thumb is:
+        </p>
+        <ul>
+          <li>keep data for a project all within a specific folder</li>
+          <li>separate "raw" data from "processed" data
+            <ul>
+              <li>raw data are datasets downloaded or provided by partners; by keeping them separate from
+              processed data you should be able to always go back to the original data and
+              repeat/adjust your data preprocessing</li>
+              <li>processed data should be any dataset that is based on raw data but has been modified
+              within code in the project repository</li>
+            </ul>
+          </li>
+          <li>date the datasets, especially raw datasets, in case they are updated or modified outside
+          the scope of your code repository, to be able to check and confirm changes to the previous
+          datasets</li>
+        </ul>
+
+        <figure>
+          <img src="../images/pxr_dataset_sankey.png" alt="Sankey diagram of the OpenADMET PXR challenge dataset flow">
+          <figcaption>Flow of compounds across the four datasets: from the primary single-dose screen through dose-response confirmation, counter-screening, and into the test set. Image courtesy of the <a href="https://openadmet.ghost.io/predicting-pxr-induction-we-have-liftoff/" target="_blank" rel="noopener">OpenADMET group</a>.</figcaption>
+        </figure>
+
+        <p>
+          For this challenge, I downloaded four datasets provided by OpenADMET in collaboration with
+          Octant and the Fraser Lab. The four datasets are:
+        </p>
+        <ul>
+          <li><strong>Single-dose dataset</strong>: 10,877 compounds tested at a single or small number of concentrations</li>
+          <li><strong>Dose-response dataset</strong>: the main training set, with 4,140 compounds tested across a series of doses to obtain EC50 data</li>
+          <li><strong>Counter-screen dataset</strong>: a subset of compounds from the dose-response dataset were tested to potentially remove false positive screening hits</li>
+          <li><strong>Test set</strong>: the dataset that will be used to assess predictions</li>
+        </ul>
+        <p>
+          More detail about these datasets is provided in the
+          <a href="https://openadmet.ghost.io/predicting-pxr-induction-we-have-liftoff/" target="_blank" rel="noopener">OpenADMET blog post</a>.
+        </p>
+
+        <h3>First contact</h3>
+
+        <p>
+          My main goal for this first notebook was to access and have a first quality control pass on the
+          data. I wanted to confirm the number of data points in each dataset and check for duplicate
+          structures and/or ID numbers. Chemical structures are provided as SMILES and two potential ID
+          numbers can be seen in different datasets (Molecule Name and OCNT Batch).
+        </p>
+        <p>
+          You can check for duplicated chemical structures or data records in several ways. I recommend
+          computing the InChI and InChIKey based on the SMILES provided in the data.
+          <a href="https://iupac.org/who-we-are/divisions/division-details/inchi/" target="_blank" rel="noopener">InChI</a>
+          is a string representation defined by the IUPAC that is canonical — the same chemical structure
+          will always provide the same InChI. This cannot be guaranteed with SMILES, as different chemical
+          toolkits can canonicalize SMILES differently, leading to different strings for the same chemical
+          structure. An additional benefit of InChIs over SMILES is that InChIs can represent different
+          resonant structures of the same molecule by defining a set of floating hydrogens over several
+          heavy atoms.
+        </p>
+        <p>
+          This first look at the data highlighted a small number of discrepancies with the numbers reported
+          in the blog post. Specifically, the single-dose dataset contains 10,875 unique InChIKeys, two
+          less than the number of compounds reported (10,877). In addition, the blog post says 2,745
+          compounds from the single-dose were progressed to the dose-response assay. However, I only found
+          2,738 InChIKeys in common between the two datasets. These are small discrepancies, but worth
+          highlighting. In an organization, I would go back to the experimentalists and make sure of the
+          origin of the discrepancies. Often, it turned out I was provided an outdated file. Here, I asked
+          in the Discord chat but have yet to receive a reply.
+        </p>
+
+        <figure>
+          <img src="../images/20260407_duplicated_structure.png" alt="Chemical structure of duplicated InChIKey">
+          <figcaption>The two structures (OADMET-0003733 and OADMET-0003684) that generate the same InChIKey. One specifies the cis/trans geometry around the C=C bond; the other leaves it unspecified.</figcaption>
+        </figure>
+
+        <p>
+          Another small thing to consider that came up in the analysis was a pair of structures
+          (OADMET-0003733 and OADMET-0003684) with different SMILES that generated the same InChIKey.
+          Checking the SMILES, it seems like one defines a specific cis/trans stereoisomer around a C=C
+          bond, while the other leaves it unspecified. InChI on the other hand, assumes that the double
+          bond is part of a larger cluster of delocalized hydrogens with the adjacent ring system and
+          doesn't consider it a stereo center. Generally, I would recommend combining these entries by
+          averaging their activity data, just to make sure they wouldn't end up with one in the training
+          set and the other in the test, which would make that instance easy to predict.
+        </p>
+
+        <h3>Next steps</h3>
+
+        <p>
+          For the next notebook, my goal is to provide a deeper look into the data. I want to analyze the
+          SAR content through quantitative analysis and visualization tools, and start looking at the
+          chemical structures to have an intuition of how diverse the datasets are.
+        </p>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>

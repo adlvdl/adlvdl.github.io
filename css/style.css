@@ -774,6 +774,7 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
   font-size: 0.8rem;
   color: var(--text-3);
   margin-top: 0.4rem;
+  margin-bottom: 1.5rem;
   display: block;
 }
 
