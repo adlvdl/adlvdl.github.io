@@ -108,6 +108,11 @@ The script sets `data-theme` on `<html>` and also applies `backgroundColor` dire
 
 Copy the nav/footer/script block from any existing page. Set the correct `class="nav-active"` on the matching nav link. Wrap main content in `<div class="container">`. Use `class="page-header"` for the page title section.
 
+Every page `<head>` must include the Umami analytics script (just before `</head>`):
+```html
+<script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+```
+
 Footer social links order: LinkedIn → ORCID → ResearchGate. No Mastodon link.
 
 
