@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Blog — Antonio de la Vega de León</title>
-  <meta name="description" content="Technical posts on machine learning, cheminformatics, and applied data science for drug discovery.">
+  <title>PXR challenge #0: A brief update — delavega.ai</title>
+  <meta name="description" content="The OpenADMET organizers have updated the PXR challenge datasets and published a detailed response to reported issues.">
   <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
-  <link href="css/style.css" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
   <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
 </head>
 <body>
 
   <nav class="site-nav" id="site-nav">
-    <a class="nav-logo" href="index.html">delavega.ai</a>
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
     <ul class="nav-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="services.html">Services</a></li>
-      <li><a href="blog.html" class="nav-active">Blog</a></li>
-      <li><a href="publications.html">Publications</a></li>
-      <li><a href="about.html">About</a></li>
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
     </ul>
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
     <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
@@ -30,33 +30,39 @@
   <main>
     <div class="container">
 
-      <div class="page-header">
-        <span class="mono-tag">writing</span>
-        <h1>Blog</h1>
+      <div class="post-header">
+        <span class="post-date">2026-04-10</span>
+        <span class="mono-tag">machine learning</span>
+        <h1>PXR challenge #0: A brief update</h1>
       </div>
 
-      <ul class="blog-list">
-        <li class="blog-entry">
-          <span class="blog-entry-date">2026-04-10</span>
-          <a class="blog-entry-title" href="posts/2026_04_10_brief_update.html">PXR challenge #0: A brief update</a>
-          <span class="blog-entry-tag">machine learning</span>
-        </li>
-        <li class="blog-entry">
-          <span class="blog-entry-date">2026-04-07</span>
-          <a class="blog-entry-title" href="posts/2026_04_07_first_contact_with_data.html">PXR challenge #0: First contact with the data</a>
-          <span class="blog-entry-tag">machine learning</span>
-        </li>
-        <li class="blog-entry">
-          <span class="blog-entry-date">2026-03-26</span>
-          <a class="blog-entry-title" href="posts/2026_03_26_pxr_challenge.html">Joining the OpenADMET PXR Blind Challenge</a>
-          <span class="blog-entry-tag">machine learning</span>
-        </li>
-        <li class="blog-entry">
-          <span class="blog-entry-date">2025-10-09</span>
-          <a class="blog-entry-title" href="posts/2025_10_09_fp_comparison.html">Fingerprint Comparison for Machine Learning Models</a>
-          <span class="blog-entry-tag">cheminformatics</span>
-        </li>
-      </ul>
+      <div class="post-body">
+
+        <p>
+          In my <a href="2026_04_07_first_contact_with_data.html">previous post</a>, I mentioned seeing a few
+          inconsistencies in the numbers reported in the OpenADMET blog post compared to what I observed with the
+          data. This and a few other issues were reported and discussed in the challenge Discord. The organizers
+          promised to look into these issues.
+        </p>
+
+        <p>
+          Yesterday they announced that they had made small changes to the datasets in HuggingFace. They also
+          released a lengthy <a href="https://docs.google.com/document/d/14-2EL4Zk8g3NNO7bi33gA3fHz_ef98bBigunJMH3Ui4/edit?tab=t.0#heading=h.azqdv6g0boyn" target="_blank" rel="noopener">document</a>
+          detailing the reports they had received, how the datasets were changed in the new version, and what steps
+          they plan to take so this doesn't happen in future challenges.
+        </p>
+
+        <p>
+          I think the organizers handled the feedback well. Data curation is hard, especially across several
+          interconnected datasets, and promptly updating pipelines in response to participants' comments is the
+          best way to improve the process. Kudos to the team at OpenADMET.
+        </p>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
 
     </div>
   </main>
