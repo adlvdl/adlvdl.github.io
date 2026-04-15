@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR challenge #1: Exploring the data — delavega.ai</title>
+  <meta name="description" content="Chemical space overview, activity cliff analysis, and train–test similarity exploration for the OpenADMET PXR induction challenge dataset.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-04-15</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR challenge #1: Exploring the data</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          Whenever you start a new project, it is always good to familiarize yourself with the data.
+          In the <a href="2026_04_07_first_contact_with_data.html">previous post</a>, I briefly checked
+          the overlap of compound structures between the datasets, but barely looked at chemical structures
+          or activity patterns. In this post, we will get an overview of the chemical space across the
+          four datasets and explore in detail the activity distribution.
+          The main questions to answer in this analysis are:
+        </p>
+        <ul>
+          <li>How diverse is the chemical space?</li>
+          <li>How widespread is PXR induction within the chemical space?</li>
+          <li>What is the SAR character of the data (is it discontinuous)?</li>
+          <li>Are there broad chemical series that can be extracted from the data?</li>
+        </ul>
+
+        <h3>A note about the code</h3>
+
+        <p>
+          My plan was to generate one marimo notebook for each post and make each notebook standalone.
+          However, as I kept expanding the scope of the analysis, it became increasingly cumbersome to
+          work within one really large notebook. So I decided to split the code into five notebooks as
+          detailed below. On the one hand, I think this makes the notebooks easier to follow. On the
+          other hand, it means some duplicated code as I wanted to keep the notebooks portable.
+          In a normal project, I would just have made a folder with common scripts and functions to be
+          called within the notebooks. For each notebook, I provide a link to the Python file in my
+          <a href="https://github.com/adlvdl/pxr_challenge" target="_blank" rel="noopener">pxr_challenge repository</a>
+          as well as HTML exports of the notebooks that allow some exploration of the data tables and plots.
+        </p>
+
+        <h3>Data preprocessing</h3>
+
+        <p>
+          The first
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/1a_data_preprocessing.py" target="_blank" rel="noopener">notebook 1a</a>
+          (<a href="../html_notebooks/pxr_challenge/1a_data_preprocessing.html">html</a>)
+          reads the latest HuggingFace datasets (those updated on April 9th) and generates a set of
+          processed datasets. The first derived dataset contains all unique compounds across the single
+          dose screen, dose response screen, counter screen and test dataset. I make sure to normalize
+          chemical structures using InChIKeys (somewhat against the advice of the OpenADMET organizers
+          who recommend organizing data by Molecule Name or OCNT Batch ID) so each row represents one
+          chemical structure. In this step I keep only those columns that I might potentially use for
+          filtering and modeling in subsequent notebooks.
+        </p>
+        <p>
+          From the single dose, I keep the median log<sub>2</sub>FC value and whether it is considered
+          a hit at the given concentration (a hit is defined by median log<sub>2</sub>FC &gt; 1 and
+          FDR-BH &lt; 0.05). I keep these two properties for all four concentrations present in the
+          single dose dataset, even though the 1&nbsp;μM and 100&nbsp;μM concentrations have much fewer
+          data points than 30&nbsp;μM and 10&nbsp;μM. For the dose response and counter screen data I
+          keep only the pEC50 and "Emax_estimate (log<sub>2</sub>FC vs. baseline)" columns. The test
+          set compounds obviously only have IDs and chemical structure.
+        </p>
+        <p>
+          Once I had a file with all unique chemical structures across the four datasets, I computed all
+          potential matched molecular pairs (MMPs) using mmpdb. MMPs are two molecules that share a
+          large common substructure and differ only at a single point (either central or terminal).
+          Because of that, they are a very intuitive way to identify similar pairs of compounds.
+          Both the activity dataset and the MMP dataset are used in the following notebooks.
+        </p>
+
+        <h3>Chemical Space Exploration</h3>
+
+        <p>
+          In
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/1b_chemical_space_and_mmp.py" target="_blank" rel="noopener">notebook 1b</a>
+          (<a href="../html_notebooks/pxr_challenge/1b_chemical_space_and_mmp.html">html</a>),
+          I provide an overview of the chemical space. This can be done in many different ways and
+          generally depends on a molecular representation or fingerprint and a similarity metric.
+          Two types of visualizations of chemical space are demonstrated:
+        </p>
+        <ul>
+          <li>chemical embeddings</li>
+          <li>similarity networks</li>
+        </ul>
+
+        <h4>UMAP and t-SNE embeddings</h4>
+
+        <p>
+          Chemical embeddings are scatterplots where each point is a molecule and its X and Y position
+          depends on its chemical structure. This can be done using dimensionality reduction techniques
+          like t-SNE or UMAP on a given fingerprint. I decided to use an ECFP6 fingerprint as a basis
+          for the t-SNE and UMAP plots. Often the coloring scheme in these visualizations is based on
+          the value of some biological property like activity. However, in our examples the coloring is
+          based on dataset.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/umap_ecfp6_chemical_space.png" alt="UMAP embedding of ECFP6 fingerprints coloured by dataset">
+          <figcaption>UMAP embedding of ECFP6 fingerprints, coloured by dataset: single-dose (gray), dose-response (light blue), counter-screen (dark blue), and test set (dark green).</figcaption>
+        </figure>
+
+        <p>
+          The UMAP reveals a single, broadly dispersed cloud with no strong cluster separation.
+          The absence of tight, well-separated clusters suggests <strong>high chemical diversity without
+          dominant scaffold families</strong>. Dose-response compounds (light blue) and counter-screen
+          compounds (dark blue) are distributed throughout the same space as the single-dose compounds
+          (gray). This could suggest that PXR induction is fairly well distributed across the chemical
+          space, but no pEC50 values are shown here. The test set (dark green) is similarly distributed
+          across the embedding. While they tend to appear as small clusters, these clusters are
+          distributed widely and suggest that test compounds are also structurally diverse.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/tsne_ecfp6_chemical_space.png" alt="t-SNE embedding of ECFP6 fingerprints coloured by dataset">
+          <figcaption>t-SNE embedding of ECFP6 fingerprints, coloured by dataset.</figcaption>
+        </figure>
+
+        <p>
+          The t-SNE embedding shows very similar patterns to the UMAP plot. t-SNE plots tend to be
+          more space-filling than UMAP plots at default parameters, but because there is no high-level
+          structure to the diversity of the dataset they both end up very diffuse.
+        </p>
+        <p>
+          I also show in the last cell of the notebook an interactive plot of the chemical space colored
+          based on pEC50 values on the dose response screen, with test compounds highlighted in red.
+          Sadly, the HTML notebook exported from marimo is not able to show the chemical structure of
+          the hovered data point. But if you run the notebook yourself, you will be able to easily get
+          an idea of the chemical structures present in the different datasets.
+        </p>
+        <p>
+          The interactive plot helps to show that PXR induction at μM level is widely distributed
+          across the chemical space. There are clusters of mostly low-activity compounds in several
+          sections of the plot. The coloring scheme also highlights better than the other plots that
+          test compounds (in red) are found all over the chemical space.
+        </p>
+
+        <h4>Similarity networks</h4>
+
+        <p>
+          Similarity networks are graphs where each node is a molecule and edges connect "similar"
+          molecules. How we define similarity can be very different. Here I use MMPs, although I filter
+          the MMPs calculated by mmpdb so that the common core in an MMP is larger than the variable
+          section. In datasets that are less diverse, I would be more strict when filtering MMPs, but
+          the number of MMPs here is small enough even with this loose filter.
+        </p>
+        <p>
+          Once you have your graph, you use a layout algorithm like Fruchterman-Reingold to calculate
+          the X and Y positions of each node. The idea is to pull connected nodes closer together and
+          push unconnected ones apart.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/mmp_network.png" alt="Similarity network built from matched molecular pairs">
+          <figcaption>Similarity network built from matched molecular pairs (MMPs). Nodes are compounds; edges connect MMP pairs. Test-set compounds are shown in green.</figcaption>
+        </figure>
+
+        <p>
+          The MMP network is fragmented: one large hub cluster, several medium clusters, and many
+          isolated pairs. The large, diffuse grid-like region should represent compounds with
+          single-substituent changes at common positions, like systematic analogues sharing a common
+          core. However in this case it seems to be an artifact, as compounds in the largest connected
+          component are small molecules with one or a small number of small rings. Test-set compounds
+          (green) appear in several clusters alongside training compounds, showing many similarity
+          relationships between training and test set.
+        </p>
+
+        <h4>pEC50 landscape across chemical space</h4>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/umap_pec50_chemical_space.png" alt="UMAP of dose-response compounds coloured by pEC50">
+          <figcaption>UMAP of dose-response compounds coloured by pEC50, recomputed on this subset to maximize structural resolution.</figcaption>
+        </figure>
+
+        <p>
+          The UMAP of dose-response compounds colored by pEC50 (recomputed on this subset to maximize
+          structural resolution) shows that high-potency compounds (pEC50 &gt; 6) are <strong>scattered
+          throughout chemical space</strong> rather than concentrated in one region. Multiple chemotypes
+          contribute to activity; global structural similarity to known actives is a poor proxy for
+          potency.
+        </p>
+
+        <h3>Activity Cliffs</h3>
+
+        <p>
+          Activity cliffs (ACs) are pairs of structurally similar compounds with large differences in
+          biological activity. They are the most information-dense SAR signal in the dataset and the
+          hardest prediction targets. Datasets with a large number of activity cliffs are called SAR
+          discontinuous, and they are generally harder to model than datasets with a low number of
+          activity cliffs. The main complexity of AC analysis is how to define them — we need to
+          separate similar compound pairs from dissimilar ones. Here I compute ACs based on MMPs and
+          different fingerprint representations. The code can be found in
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/1c_activity_cliffs.py" target="_blank" rel="noopener">notebook 1c</a>
+          (<a href="../html_notebooks/pxr_challenge/1c_activity_cliffs.html">html</a>).
+        </p>
+
+        <h4>MMP-based cliffs</h4>
+
+        <p>
+          Applying |ΔpEC50| ≥ 2 to the 1,503 MMP pairs within the dose-response set identifies
+          <strong>60 activity cliff pairs</strong>, just 4% of MMP-connected compounds. The number of
+          MMP cliffs is very low, but it is not surprising considering the low number of MMPs we have
+          in the dataset.
+        </p>
+
+        <h4>Fingerprint-based cliffs and fingerprint dependence</h4>
+
+        <p>
+          Computing similarity based on chemical fingerprints has a long history in chemoinformatics.
+          Similar to the discussion in the chemical embedding section, the choice of fingerprint and
+          similarity metric has a large impact on the analysis. It is important to be aware that the
+          distribution of similarity values will differ from fingerprint to fingerprint, even when the
+          differences between them (e.g. folding ECFP4 to 1k or 4k bits) are small.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/density_sim_fingerprints.png" alt="Pairwise similarity distributions for dose-response compounds across four fingerprint types">
+          <figcaption>Pairwise Tanimoto similarity distributions for dose-response compounds across four fingerprint types.</figcaption>
+        </figure>
+
+        <p>
+          Based on my experience and the literature, I frequently use rule-of-thumb thresholds to define
+          similar pairs: for MACCS it's Tanimoto ≥ 0.8 and for ECFP4 it's Tanimoto ≥ 0.4. The number
+          of ACs calculated from each fingerprint varies, but it generally hovers around 10% of similar
+          pairs. However, while the number is similar the exact pairs identified are often different.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/venn_cliffs_maccs_ecfp4.png" alt="Venn diagram of activity cliff overlap between MACCS and ECFP4 fingerprints">
+          <figcaption>Overlap of activity cliff pairs identified by MACCS and ECFP4 fingerprints.</figcaption>
+        </figure>
+
+        <p>
+          The Venn diagram of MACCS- and ECFP4-defined cliff pairs reveals that the two fingerprints
+          identify largely non-overlapping sets of activity cliffs. Only a small fraction of pairs
+          (~10 out of cumulatively &gt; 500 cliffs) are identified as cliffs by both criteria. These
+          consensus cliffs are a way to generalize the AC analysis across different representations.
+        </p>
+
+        <h3>Train–test similarity comparison</h3>
+
+        <p>
+          In this section
+          (<a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/1d_train_test_exploration.py" target="_blank" rel="noopener">notebook 1d</a>
+          — <a href="../html_notebooks/pxr_challenge/1d_train_test_exploration.html">html</a>)
+          I look in more detail at the similarity patterns between training and test set. I want to test
+          how distinct test compounds are from training compounds. For that I compared the similarity
+          value distribution within the training and test set, and between compounds of the train and
+          test set.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/density_sim_train_test.png" alt="ECFP4 Tanimoto similarity distributions comparing within-train, within-test, and cross-set pairs">
+          <figcaption>ECFP4 Tanimoto similarity distributions: within-train (gray), within-test (green), and cross-set train–test (blue). All three peak near Tanimoto = 0.12–0.15.</figcaption>
+        </figure>
+
+        <p>
+          The three distributions are overlaid: within-train, within-test, and train-vs-test (cross-set)
+          ECFP4 Tanimoto similarities. All three are very similar, peaking near Tanimoto = 0.12–0.15.
+          <strong>The test set seems indistinguishable from the training set in structural diversity and
+          coverage.</strong> If the test set was structurally different from the train we would expect
+          the cross-set similarity distribution to shift left.
+        </p>
+        <p>
+          The next analysis looks at the similarity value distribution between the training and test set
+          to extract, for each test set compound, its nearest neighbor (NN) in the training set. The
+          majority of the test compounds have a NN in the train set that can be considered highly similar
+          (ECFP4 Tanimoto similarity &gt; 0.4).
+        </p>
+        <p>
+          As the final analysis I recreate a plot shown in the
+          <a href="https://github.com/OpenADMET/PXR-Challenge-Tutorial" target="_blank" rel="noopener">example notebook</a>
+          for the PXR activity submission, comparing dose response pEC50 to counter screen pEC50 values.
+          Based on this plot, training compounds can be divided into:
+        </p>
+        <ul>
+          <li>Not tested in counter screen</li>
+          <li>Non-selective: ΔpEC50<sub>DR − counter</sub> ≤ 1.5</li>
+          <li>Selective: ΔpEC50<sub>DR − counter</sub> &gt; 1.5</li>
+          <li>Hit: selective and pEC50<sub>DR</sub> ≥ 6</li>
+        </ul>
+        <p>
+          Based on these definitions, I looked at what type of training compounds were the NN of the
+          test set compounds.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_15_pxr_sar_exploration/barchart_test_nn_train.png" alt="Bar chart of counter-screen classification of nearest training neighbours for each test compound">
+          <figcaption>Counter-screen classification of the nearest training-set neighbour for each test compound.</figcaption>
+        </figure>
+
+        <p>
+          The majority of test compounds have NNs that are classified as selective or hits. I was
+          surprised at the data as I had expected the hits to be more predominant. This may reflect that
+          the test set was assembled from a broader pool, focusing more on exploration than exploitation
+          of highly active and selective compounds. On the other hand, this could also be an artifact:
+          an analog of a hit compound may have been selected from a commercially available set whose
+          nearest neighbor within our dataset is different. This issue can often appear when you
+          retrospectively assess decisions on compound sets using only the output. Without additional
+          data, it is not possible to be sure what the basis was for each test set compound to be chosen.
+        </p>
+
+        <h3>Scaffold Analysis</h3>
+
+        <p>
+          In the final section
+          (<a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/1e_scaffold_analysis.py" target="_blank" rel="noopener">notebook 1e</a>
+          — <a href="../html_notebooks/pxr_challenge/1e_scaffold_analysis.html">html</a>)
+          I look in more detail at the structural variety of the dataset. I performed a scaffold
+          decomposition similar to the one done in a
+          <a href="https://pubs.acs.org/doi/10.1021/ci600338x" target="_blank" rel="noopener">scaffold tree</a>.
+          I was interested not in the topology of the nodes in a scaffold tree, but in the frequency of
+          occurrence of Bemis-Murcko scaffolds, linked ring systems and individual ring systems, which
+          together I call substructures for lack of a better word. I used this data to analyze and
+          visualize the structural overlap between the training and test set. In this type of analysis,
+          I am always interested to find large substructures (in terms of number of heavy atoms) that
+          are present in a large number of compounds, as they can provide data-derived chemical series
+          to cluster and classify the data.
+        </p>
+        <p>
+          The plot comparing substructures between the training and test set finally killed a
+          misconception I had about the test dataset. As I had seen them called analog sets, my mind
+          went directly to analog series. I was expecting the test set to be based on one or a small
+          number of unique scaffolds, using a small set of hit compounds as reference. That is not the
+          case. Although the test set molecules are highly similar to at least one compound in the
+          training set, they are themselves fairly diverse.
+        </p>
+
+        <h3>Conclusion</h3>
+
+        <p>So, to conclude, let's go back to the questions I originally posed:</p>
+        <ul>
+          <li>
+            <strong>How diverse is the chemical space?</strong> Very diverse. Some parts were not
+            surprising (considering the single dose dataset came from diverse libraries) but I didn't
+            expect the test set to be as diverse as it is. I think that will make prediction harder.
+          </li>
+          <li>
+            <strong>How widespread is PXR induction within the chemical space?</strong> The pEC50
+            values in the training set are generally lower (values between 2 to 7) than you often see
+            in ChEMBL, but this is expected as we're looking at unoptimized molecules. I was surprised
+            that μM activity was found pretty much over the whole chemical space.
+          </li>
+          <li>
+            <strong>What is the SAR character of the data (is it discontinuous)?</strong> I would say
+            mildly discontinuous. We did find activity cliffs, but their propensity across similar pairs
+            of compounds (4–12%) is not massive.
+          </li>
+          <li>
+            <strong>Are there broad chemical series that can be extracted from the data?</strong> No,
+            I was not able to find substructures or scaffolds that would help organize the chemical
+            space into a small number of chemical series.
+          </li>
+        </ul>
+        <p>
+          Overall, I expect the modeling to be challenging, and I heard similar sentiments from other
+          participants in the Discord chat. The next step will be to explore data splits, train baseline
+          and single-task models, and generate my first submission — making sure to have at least some
+          predictions ready for the mid-challenge unblinding of part of the test set.
+        </p>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
