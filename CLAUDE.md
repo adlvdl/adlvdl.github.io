@@ -102,6 +102,7 @@ The script sets `data-theme` on `<html>` and also applies `backgroundColor` dire
 - Individual posts: `posts/YYYY_MM_DD_slug.html`
 - **Latest post strip on homepage is hardcoded** — update it manually when a new post is added
 - Also update the blog list entry in `blog.html` and the blog posts section in `publications.html`
+- The language in the blog is American English, the tone is first person and scientific
 
 
 ## 6. Adding a new page

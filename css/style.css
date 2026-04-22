@@ -749,6 +749,36 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
   font-size: 1.1rem;
 }
 
+.post-body h4 {
+  margin-top: 2rem;
+  margin-bottom: 0.6rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.88rem;
+}
+
+.post-body th,
+.post-body td {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.post-body th {
+  background: var(--bg-alt);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
 .post-body p {
   margin-bottom: 1.1rem;
 }

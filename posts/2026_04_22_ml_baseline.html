@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #2: Training and Comparing ML Baseline Models — delavega.ai</title>
+  <meta name="description" content="Comparing data split strategies and training ML baseline models for the OpenADMET PXR induction challenge, with rigorous statistical model comparison using 5×5 nested cross-validation.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-04-22</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #2: Training and Comparing ML Baseline Models</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          This is the third post in the PXR challenge series.
+          The <a href="2026_04_15_pxr_sar_exploration.html">previous post</a> explored the dataset
+          looking for structure-activity relationship patterns. In this post I start modeling:
+          I compare different data splitting techniques, train different ML models, evaluate them
+          with a rigorous statistical framework, and submit the best model's predictions to the
+          leaderboard.
+        </p>
+        <p>
+          The full notebook is available as
+          <a href="../html_notebooks/pxr_challenge/2_ml_baseline.html">an interactive HTML export</a>
+          and the source code is on
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/2_ml_baseline.py" target="_blank" rel="noopener">GitHub</a>.
+        </p>
+
+        <h3>Part 1 — Comparing Data Split Strategies</h3>
+
+        <p>
+          Splitting the data is the first part of any ML modeling workflow, because
+          <strong>performance results must be assessed using data not seen during training</strong>.
+          In most cases you want to split the data into three sets:
+        </p>
+        <ul>
+          <li><strong>training:</strong> this data will be used to update the state of an ML model (weights, trees, etc.)</li>
+          <li><strong>validation:</strong> this data will be used to assist the training of an ML model (for example, you can use performance on the validation set to guide early stopping of a model)</li>
+          <li><strong>test:</strong> this data is never used during training; it is used by a trained model to provide predictions on new data</li>
+        </ul>
+        <p>
+          While the basics are simple, the devil hides in the details. You can do a simple split
+          of the data into three sets, or you can perform a cross-validation (CV) experiment where
+          you chunk the data into N sets, where one set is the test set and the other chunks
+          comprise the training and validation sets. Moreover, you need to decide by what criteria
+          you split the data. Ideally you want to
+          <strong>split the data in such a way to gain a realistic estimate of how your model will
+          perform on new data you will obtain in the future</strong>. This is not always easy to
+          assess retrospectively. In general, the literature suggests that random splits provide
+          an optimistic assessment of the model, while scaffold and temporal splits (explained
+          below) are more realistic or pessimistic.
+        </p>
+        <p>
+          I implemented the three splitting strategies and measured their difficulty using
+          <strong>train/test Tanimoto similarity</strong> distributions (ECFP4, radius 2, 2048 bits)
+          across one round of 5-fold CV.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>What it tests</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Random</strong></td>
+              <td>Baseline — molecules are shuffled at random across folds</td>
+            </tr>
+            <tr>
+              <td><strong>Scaffold</strong></td>
+              <td>Chemical generalization — folds split by Bemis–Murcko scaffold so the model never sees a scaffold at test time that it trained on</td>
+            </tr>
+            <tr>
+              <td><strong>Temporal</strong></td>
+              <td>Prospective generalization — molecules ordered by their numeric ID, used as a proxy for acquisition order</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>For each fold and each split method I computed two similarity views:</p>
+        <ul>
+          <li><strong>All pairs</strong> — every (test compound, train compound) Tanimoto value; captures the full distributional picture</li>
+          <li><strong>Nearest neighbor (NN)</strong> — only the maximum similarity per test compound; directly measures how close each prediction will be to training data</li>
+        </ul>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/tanimoto_similarity_splits.png" alt="Train/test Tanimoto similarity distributions by split strategy">
+          <figcaption>Train/test Tanimoto similarity distributions by split strategy (all-pairs and nearest-neighbor views across 5 CV folds).</figcaption>
+        </figure>
+
+        <p>
+          The results are striking in how <em>similar</em> the three strategies are. All three
+          distributions peak around Tanimoto 0.15–0.20 in the all-pairs view, with nearest-neighbor
+          medians between 0.35 and 0.45. The temporal splits show only a modest leftward shift
+          relative to the random split.
+        </p>
+        <p>
+          This result is consistent with the structural analysis from post #1: the dose-response
+          set is highly diverse, with the majority of Bemis–Murcko scaffolds represented by only
+          one or two compounds. When the dataset is so diverse, scaffold-based splitting degrades
+          to near-random splitting. There are too few large scaffold families to isolate.
+        </p>
+        <p>
+          While a temporal split is traditionally considered a more realistic and pessimistic split,
+          it assumes data originates from a cyclical process — a series of DMTL (Design, Make, Test,
+          Learn) cycles — where later entries expand and learn from previous ones. That is not the
+          case here, as the training set is largely a subset of a screening library. In addition,
+          I made the assumption that progression in ID number could have a temporal character, which
+          might be wrong. Nonetheless, there is a small shift to lower similarity values, seen
+          especially in the NN plot. If I wanted to examine this in more detail, I would check
+          whether the training compounds that were not in the single-dose set have ID numbers after
+          those of the single-dose compounds. That might explain the slight shift.
+        </p>
+        <p>
+          For a genuinely challenging structure-based split one would instead cluster the full
+          dataset (e.g. by hierarchical clustering or Butina clustering on ECFP4) and hold out
+          entire clusters. Given the near-identical distributions,
+          <strong>I proceed with random CV for all subsequent model comparisons</strong>. It is the
+          simplest strategy and the similarity analysis suggests it is unlikely to give meaningfully
+          different results than the other splits.
+        </p>
+
+        <h3>Part 2 — Models</h3>
+
+        <p>I compared four machine learning models and two simple baseline models.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Backend</th>
+              <th>Input</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>MeanBaseline</code></td>
+              <td>Predict the training-set mean for every compound</td>
+              <td>None</td>
+            </tr>
+            <tr>
+              <td><code>NearestNeighborBaseline</code></td>
+              <td>Predict the label of the most similar training compound (1-NN, Tanimoto)</td>
+              <td>ECFP fingerprint</td>
+            </tr>
+            <tr>
+              <td><code>RandomForestModel</code></td>
+              <td>scikit-learn Random Forest Regressor</td>
+              <td>ECFP fingerprint</td>
+            </tr>
+            <tr>
+              <td><code>BoostedTreesModel</code></td>
+              <td>XGBoost Regressor with early stopping</td>
+              <td>ECFP fingerprint</td>
+            </tr>
+            <tr>
+              <td><code>ChempropModel</code></td>
+              <td>Chemprop v2 D-MPNN trained from scratch</td>
+              <td>SMILES</td>
+            </tr>
+            <tr>
+              <td><code>ChempropChemeleonModel</code></td>
+              <td>Chemprop v2 fine-tuned from the <a href="https://github.com/JacksonBurns/chemeleon" target="_blank" rel="noopener">CheMeleon</a> weights</td>
+              <td>SMILES</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The two baselines serve as lower bounds rather than real competitors.
+          The <strong>mean baseline</strong> should produce by definition R² = 0 and an undefined
+          Spearman ρ — it tells us the worst-case MAE we could achieve with no structural
+          information guiding the prediction.
+          The <strong>nearest-neighbor baseline</strong> is a useful sanity check: if a model with
+          learned representations cannot beat 1-NN retrieval, something is wrong. It is the simplest
+          model in which structural information from the training set guides the prediction in the
+          test set.
+        </p>
+        <p>
+          All fingerprint-based models used <strong>ECFP4</strong> (radius 2, 2048 bits).
+          A 10% validation split was carved from each training fold for XGBoost and Chemprop early
+          stopping (50 epoch maximum).
+        </p>
+
+        <h3>Part 3 — Model Comparison</h3>
+
+        <p>
+          A common mistake in ML benchmarking is ranking models by their mean metric across folds
+          and treating the order as meaningful without assessing whether differences are statistically
+          significant. The key problem is that folds are shared across models — the same train/test
+          split is seen by every model — creating a repeated-measures structure that ordinary t-tests
+          ignore and that inflates false-positive rates.
+        </p>
+        <p>
+          Many scientific papers, when comparing ML models, simply provide a table of metrics
+          calculated from one split of the dataset. Such a comparison is likely to hide stochastic
+          effects that most ML models have during training, like initialization conditions. For a
+          long time I would train ten different models using different seeds to account for these
+          types of stochastic effects. A
+          <a href="https://pubs.acs.org/doi/10.1021/acs.jcim.5c01609" target="_blank" rel="noopener">recent publication</a>
+          showed a more rigorous method to compare ML models.
+        </p>
+        <p>
+          In this analysis, I followed the approach they shared, adapting code from
+          <a href="https://github.com/polaris-hub/polaris-method-comparison" target="_blank" rel="noopener">polaris-hub/polaris-method-comparison</a>.
+          I ran <strong>5 × 5 nested cross-validation</strong> (5 outer × 5 inner folds, 25 folds
+          total) using random splitting. The target column is <code>pEC50_dr</code> — the
+          dose-response pEC<sub>50</sub> from the primary assay, the same quantity submitted to the challenge
+          leaderboard. Training all six models across 25 folds took approximately <strong>7 hours</strong>
+          on a base M4 Mac Mini (the CheMeleon models dominated the wall time).
+        </p>
+        <p>
+          The 5×5 CV method provides 5 approximately independent predictions for each data point
+          in the dataset. I first computed MAE, MSE, R², and Spearman ρ for each (fold, model)
+          pair. In the example on the Polaris repo they also compute classification metrics like
+          precision and recall by providing a threshold value that separates positive and negative
+          instances. However, I always prefer to assess a regression model with regression metrics.
+          If a meaningful threshold exists, it is better to transform the labels and train a
+          classification model.
+        </p>
+
+        <h4>Step 1 — Scatter plots: predicted vs measured</h4>
+
+        <p>
+          One of the first things to do to assess an ML model is to compare predicted vs observed
+          values. Each panel shows one model's predictions pooled across all 25 folds. The dashed
+          diagonal is the identity line; red dashed lines mark the pEC<sub>50</sub> = 4.0 activity threshold
+          used for precision/recall. Metric values shown are fold-averaged.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/scatterplot.png" alt="Predicted vs measured pEC50 for all six models across 25 folds">
+          <figcaption>Predicted vs. measured pEC<sub>50</sub> for all six models, pooled across 25 folds. Dashed diagonal is the identity line; red dashed lines mark the pEC<sub>50</sub> = 4.0 activity threshold.</figcaption>
+        </figure>
+
+        <p>
+          The mean baseline produces the expected horizontal stripe at the training mean (~4.3).
+          The nearest-neighbor baseline spreads predictions more but shows considerable noise —
+          the predicted–measured correlation is low, consistent with the high structural diversity
+          discussed in post #1. The fingerprint-based models (RF, XGBoost) produce noticeably
+          tighter clouds, and the MPNN-based models (Chemprop, CheMeleon) are tighter still.
+          CheMeleon's scatter is visibly closest to the diagonal.
+        </p>
+        <p>
+          Another thing is visible in the scatterplots, especially in the Chemprop and CheMeleon
+          ones. There is a band of data at the lowest value of observed activity (pEC<sub>50</sub> &lt; 2)
+          with a large spread of predicted values (generally between 2 and 5). In the past I have
+          seen this pattern with assay data that has a threshold effect, where compounds tested are
+          outside the detection range of the assay. Those data points are normally reported as
+          &gt; X or &lt; X, but can often end up in datasets without the qualifier. However, I do not 
+          think that is happening here, as the lowest pEC<sub>50</sub> values are not all the same.
+        </p>
+
+        <h4>Step 2 — Normality diagnostics</h4>
+
+        <p>
+          One important aspect of the downstream statistical analysis is to check whether the
+          25×6 metric values computed across models and folds follow a normal distribution.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/normality_diagnostic.png" alt="Normality diagnostics — histograms and Q–Q plots for four metrics">
+          <figcaption>Normality diagnostics for the four metrics across all 25 folds: histograms (top) and Q–Q plots (bottom).</figcaption>
+        </figure>
+
+        <p>
+          The residuals are reasonably bell-shaped for MAE and R² but show mildly heavy tails for
+          MSE and ρ. The Q–Q plots confirm approximate normality for MAE and R², with some
+          deviation at the extremes. I proceed with the analysis assuming parametric tests are valid.
+        </p>
+
+        <h4>Step 3 — Boxplots with repeated-measures ANOVA p-values</h4>
+
+        <p>
+          Each box shows the cross-fold distribution of a metric for one model. The panel title
+          reports the <strong>repeated-measures ANOVA p-value</strong> — the probability of
+          observing differences this large if all models were equivalent, after accounting for the
+          shared-fold structure.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/boxplots_parametric.png" alt="Cross-fold boxplots with repeated-measures ANOVA p-values">
+          <figcaption>Cross-fold metric distributions for each model. Panel titles report repeated-measures ANOVA p-values.</figcaption>
+        </figure>
+
+        <p>
+          Three metrics yield p &lt; 0.05, confirming that the models are not statistically
+          equivalent. Rho values provide no p-value because the metric is undefined when the
+          variance of the predictions is zero, as is the case for the mean baseline where all
+          predicted values are the same. The ordering is consistent across metrics: CheMeleon
+          best, then Chemprop, then RF and XGBoost, with the two baselines at the bottom.
+        </p>
+        <p>I also computed the non-parametric boxplots as a cross-check.</p>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/boxplots_nonparametric.png" alt="Cross-fold boxplots using the Friedman test">
+          <figcaption>Cross-fold metric distributions using the Friedman test as a non-parametric cross-check.</figcaption>
+        </figure>
+
+        <p>
+          The results are visually very similar, which is what I would expect from the normality
+          analysis I did in the previous step. If the values and figures show marked differences,
+          I generally prefer to go with the nonparametric results.
+        </p>
+
+        <h4>Step 4 — Multiple-comparison heatmaps</h4>
+
+        <p>
+          In the next step I performed the Tukey HSD test and showed the results as a series of
+          heatmaps. Each cell shows the mean difference between two different models. Color
+          encodes direction and magnitude of the effect size; significance stars follow the
+          standard convention (*** p &lt; 0.001, ** p &lt; 0.01, * p &lt; 0.05).
+        </p>
+        <p>
+          For metrics to <strong>maximize</strong> (R², ρ) red colors mean the row model is
+          better; for metrics to <strong>minimize</strong> (MAE, MSE) the colormap is reversed
+          so red colors still mean the row model is better.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_04_22_ml_baseline/mcs_plot_grid.png" alt="Tukey HSD pairwise comparison heatmaps">
+          <figcaption>Tukey HSD pairwise comparison heatmaps. Each cell shows the mean difference between two models; color encodes direction and significance stars mark p &lt; 0.05 / 0.01 / 0.001.</figcaption>
+        </figure>
+
+        <p>The heatmaps make the pairwise story concrete:</p>
+        <ul>
+          <li><strong>CheMeleon</strong> is significantly better than every other model across all four metrics — the top row is uniformly warm.</li>
+          <li><strong>Chemprop</strong> beats RF and XGBoost across all metrics.</li>
+          <li><strong>XGBoost</strong> beats RF only on ρ; the other three metrics are not significant.</li>
+          <li><strong>MeanBaseline</strong> and <strong>NearestNeighborBaseline</strong> are dramatically worse, as expected. The mean baseline achieves R² = 0 by construction; its ρ is undefined (NaN, displayed as 0 here). The mean baseline's worst-case MAE was <strong>0.91</strong> (predictions off by nearly one order of magnitude on average). The NN model has better MAE values though its R² was slightly negative, meaning it is marginally worse than predicting the mean.</li>
+        </ul>
+
+        <h3>Part 5 — Final Model and Submission</h3>
+
+        <p>
+          Based on the CV results, I trained a
+          <strong>CheMeleon model on the entire dose-response training set</strong> (4,138 compounds)
+          and predicted the 513 held-out test compounds.
+        </p>
+        <p>
+          A 10% random validation split (415 compounds) was drawn from the training data for early
+          stopping — this is not the competition test set. The model was trained for up to 50 epochs,
+          with the best checkpoint selected by validation loss.
+        </p>
+        <p>
+          The submission was prepared in the format required by the challenge validator and it passed
+          all validation checks (513 rows, no missing identifiers, all pEC<sub>50</sub> values numeric and finite).
+        </p>
+
+        <h4>Leaderboard results</h4>
+
+        <p>
+          At the time of submission, I was <strong>rank 57 of 84</strong>, just above the LightGBM
+          baseline provided by OpenADMET. The table below compares the performance values shown in
+          the leaderboard to the ones I saw for CheMeleon in the 5×5 CV test.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Set</th>
+              <th>MAE</th>
+              <th>R²</th>
+              <th>ρ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>5×5 CV (random)</td>
+              <td>0.50</td>
+              <td>0.62</td>
+              <td>0.75</td>
+            </tr>
+            <tr>
+              <td>Leaderboard test</td>
+              <td>0.574</td>
+              <td>0.336</td>
+              <td>0.708</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The gap between CV and test performance is larger than the inter-fold variance within CV
+          would predict. Of particular note is R², which falls from 0.62 to 0.34. MAE and ρ degrade
+          more moderately. These results suggest to me that there are meaningful differences in the
+          distribution of activity values between the CV and test sets, either in the predicted or
+          observed distributions.
+        </p>
+        <p>
+          I compared the distribution of CheMeleon pEC<sub>50</sub> values from the 5×5 CV experiment against
+          the test-set predictions. The results are shown in this table:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Stat</th>
+              <th>CV y_pred</th>
+              <th>CV y_true</th>
+              <th>Test submission</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>n</td><td>20,690</td><td>20,690</td><td>513</td></tr>
+            <tr><td>mean</td><td>4.341</td><td>4.322</td><td>5.102</td></tr>
+            <tr><td>std</td><td>0.930</td><td>1.121</td><td>0.651</td></tr>
+            <tr><td>min</td><td>0.951</td><td>1.610</td><td>2.671</td></tr>
+            <tr><td>p25</td><td>3.793</td><td>3.640</td><td>4.762</td></tr>
+            <tr><td>median</td><td>4.629</td><td>4.650</td><td>5.193</td></tr>
+            <tr><td>p75</td><td>5.025</td><td>5.130</td><td>5.583</td></tr>
+            <tr><td>max</td><td>6.933</td><td>7.549</td><td>6.444</td></tr>
+          </tbody>
+        </table>
+
+        <p>
+          The test submission is shifted ~0.76 log units higher than the CV predictions (mean 5.10
+          vs 4.34) and is much narrower (std 0.65 vs 0.93 in CV). This is not necessarily a bad
+          thing. Test compounds were generally similar to active and selective compounds in the
+          training set, as I showed in the previous post. That would explain their higher mean and
+          narrower range of predicted values compared to the whole training dataset.
+        </p>
+        <p>
+          It is worth emphasizing that this result was <strong>expected</strong>: no hyperparameter
+          optimization, feature engineering, or ensemble methods were applied. The CheMeleon model
+          was run with default settings and a fixed 50-epoch budget. The primary goal of this
+          notebook was to establish a reproducible statistical comparison framework and a clean
+          prediction baseline, not to chase leaderboard rank.
+        </p>
+
+        <h3>Summary and Next Steps</h3>
+
+        <p>This notebook established three things:</p>
+        <ol>
+          <li>
+            <strong>Data split strategy matters less than expected</strong> for this dataset.
+            The high structural diversity of the dose-response set means scaffold and temporal
+            splits produce nearly the same train/test similarity distributions as a random split.
+            A clustering-based split would be needed to create a genuinely hard out-of-distribution
+            benchmark.
+          </li>
+          <li>
+            <strong>MPNN-based models with pretrained initialization outperform fingerprint-based
+            models</strong> significantly and consistently. CheMeleon &gt; Chemprop &gt; XGBoost ≈ RF,
+            with all differences except XGBoost vs. RF reaching statistical significance. One test
+            I plan to do is to check how much of CheMeleon's advantage over Chemprop comes from
+            pretraining and how much comes from a wider hidden layer.
+          </li>
+          <li>
+            <strong>A rigorous statistical framework prevents overconfident conclusions.</strong>
+            The repeated-measures ANOVA / Friedman / Tukey HSD pipeline correctly identifies that
+            RF and XGBoost are not significantly different on most metrics, while simpler mean
+            comparisons would suggest XGBoost is consistently better.
+          </li>
+        </ol>
+        <p>
+          In the next few notebooks and posts I will be testing different strategies to improve
+          model performance. Some of the possibilities to consider:
+        </p>
+        <ul>
+          <li>Hyperparameter optimization for CheMeleon (learning rate, epochs, batch size)</li>
+          <li>Multi-task learning using the counter-screen pEC<sub>50</sub> and/or Emax values</li>
+          <li>Pretraining models with the single dose dataset</li>
+          <li>Ensemble methods combining CheMeleon with fingerprint-based models</li>
+        </ul>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
