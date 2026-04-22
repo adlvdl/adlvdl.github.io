@@ -1056,7 +1056,105 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
 }
 
 
-/* ── 15. ANIMATIONS ──────────────────────────────────── */
+/* ── 15. CLIENTS STRIP ───────────────────────────────── */
+
+.clients-strip {
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.clients-strip .container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clients-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-3);
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.clients-logos {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5rem;
+  line-height: 0;
+}
+
+/* -- marquee variant (restore when 4+ logos) --
+.clients-track-wrap {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+.clients-track {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  animation: clients-scroll 18s linear infinite;
+  width: max-content;
+  line-height: 0;
+}
+.clients-track:hover { animation-play-state: paused; }
+-- end marquee variant -- */
+
+.client-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+.client-logo--light {
+  height: 26px;
+}
+
+/* knock out white background (light logos on dark bg) */
+[data-theme="dark"] .client-logo--light {
+  mix-blend-mode: screen;
+  filter: invert(1);
+  opacity: 0.75;
+}
+
+/* knock out black background (dark logos on light bg) */
+:root .client-logo--dark,
+[data-theme="light"] .client-logo--dark {
+  mix-blend-mode: multiply;
+  opacity: 0.65;
+}
+
+[data-theme="dark"] .client-logo--dark {
+  mix-blend-mode: screen;
+  filter: invert(1);
+  opacity: 0.65;
+}
+
+@keyframes clients-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 600px) {
+  .clients-label {
+    display: none;
+  }
+  .clients-strip {
+    padding: 1rem 0;
+  }
+}
+
+/* (reduced-motion: no-op for static strip; re-add animation:none here when marquee is restored) */
+
+
+/* ── 16. ANIMATIONS ──────────────────────────────────── */
 
 @keyframes fadeUp {
   from {
