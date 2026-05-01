@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #3: Ensembling is all you need? — delavega.ai</title>
+  <meta name="description" content="Exploring larger Chemprop architectures, fingerprint alternatives for Random Forest, prediction ensembles, multitask learning, and hyperparameter optimization for the OpenADMET PXR induction challenge.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-05-01</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #3: Ensembling is all you need?</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          In the <a href="2026_04_22_ml_baseline.html">previous post</a> I trained and compared
+          four machine learning models. The results showed CheMeleon as the winner, so I trained one
+          CheMeleon model on the whole training dataset and predicted the held out test set. The models
+          I trained were simple; <strong>no multitask, pretraining or hyperparameter optimization (HPO)</strong>.
+          In this post, I am going to try to improve the model performance over the CheMeleon model
+          and answer some questions I am curious about:
+        </p>
+        <ul>
+          <li>test whether a larger Chemprop model can bridge the gap to CheMeleon</li>
+          <li>explore if any fingerprint can bring tree ensemble methods closer to MPNN models</li>
+          <li>test different prediction ensemble and multitask scenarios to try to improve performance over single task CheMeleon</li>
+        </ul>
+        <p>
+          As always, the code of the
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/3_ml_optimization.py" target="_blank" rel="noopener">notebook</a>
+          is available as well as an
+          <a href="../html_notebooks/pxr_challenge/3_ml_optimization.html">HTML version</a>
+          to explore the tables and plots in more detail.
+        </p>
+
+        <h3>Part 1: Chemprop vs CheMeleon</h3>
+
+        <p>
+          CheMeleon is a set of pretrained weights for Chemprop. It expands the message passing
+          section of the network into a larger model than the default Chemprop. I wanted to compare
+          if a Chemprop model, closer in size to CheMeleon but with no pretraining, would bridge the
+          performance gap. In other words, <strong>how much of the performance improvement comes from
+          pretraining and how much comes from the larger model?</strong>
+        </p>
+        <p>The two primary differences in the message passing section are:</p>
+        <ul>
+          <li><code>message_hidden_dim</code>: in Chemprop it is 300, in CheMeleon 2048</li>
+          <li><code>depth</code>: 3 in Chemprop, 6 in CheMeleon</li>
+        </ul>
+        <p>Based on these parameters, I tested the following Chemprop configurations:</p>
+
+<pre><code>_MODEL_NAMES = {
+    "chemprop_base": {},
+    "chemprop_depth6": {"depth": 6},
+    "chemprop_1kwidth": {"message_hidden_dim": 1024},
+    "chemprop_2kwidth": {"message_hidden_dim": 2048},
+    "chemprop_2kwidth_depth6": {"depth": 6, "message_hidden_dim": 2048}
+}</code></pre>
+
+        <p>
+          The results were interesting. While CheMeleon was statistically better than Chemprop in
+          the previous post, the difference in MAE was small (0.5 vs 0.51). Most of the new models
+          I trained here were worse than base Chemprop, except <code>chemprop_depth6</code>. This
+          model was not significantly different from CheMeleon based on MAE values, but other metrics
+          did show a difference. In general it seemed to land between base Chemprop and CheMeleon in
+          most metrics.
+        </p>
+        <p>
+          One way to look at the results is that <strong>pretraining seems to account for half of the benefit
+          of CheMeleon and larger depth accounts for the rest</strong>. The main complicating factor in this
+          interpretation is model <code>chemprop_2kwidth_depth6</code> which is even more similar to
+          CheMeleon than <code>chemprop_depth6</code> but didn't improve over base Chemprop.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2025_05_01_ml_optimization/chemprop_size_boxplots.png"
+               alt="Boxplots of MAE, R², ρ, and hit-rate across the five Chemprop size variants and CheMeleon, evaluated on 5×5 cross-validation. Friedman p-values are shown in each panel title.">
+          <figcaption>Metric distributions for Chemprop size variants and CheMeleon. <code>chemprop_depth6</code> is the only variant that approaches CheMeleon performance and improves over <code>chemprop_base</code>.</figcaption>
+        </figure>
+
+        <figure>
+          <img src="../images/posts/2025_05_01_ml_optimization/chemprop_size_mcs.png"
+               alt="Multiple comparison of means (Tukey HSD) heatmap for Chemprop size variants vs CheMeleon. Cells show mean MAE difference; stars indicate significance.">
+          <figcaption>Pairwise MAE comparison across all model variants. Colors and numbers represent the difference in performance; stars indicate statistical significance.</figcaption>
+        </figure>
+
+        <h3>Part 2: Fingerprint Comparison on Random Forest</h3>
+
+        <p>
+          While ECFP fingerprints are generally good fingerprints for machine learning and often
+          used for baseline models, the literature is clear that <em>there is no single fingerprint best
+          for every dataset</em>. It is always a good idea to try different alternatives. For this post,
+          I used the fingerprints defined in the <code>scikit-fingerprints</code> package, as well
+          as the CheMeleon fingerprint (the internal whole-molecule representation of the pretrained
+          model). For each type of fingerprint, where appropriate, I tested different configurations
+          and parameters. In total, I tested around 70 different fingerprints on a default Random
+          Forest in a 5×5 cross-validation setting. The results are compared to the CheMeleon model
+          trained in the previous post.
+        </p>
+        <p>
+          No RF model improved over the base CheMeleon model, but several fingerprints significantly
+          improved the MAE over the RF/ECFP4 baseline from the previous post. <strong>Mordred3D is the best
+          fingerprint in this experiment.</strong> The CheMeleon fingerprint, maybe not surprisingly, also
+          shows very good performance. For me most surprising was <strong>MQN, a simple fingerprint of 42
+          dimensions</strong> that I had only used in the past to generate chemical space visualizations. It
+          was the third best fingerprint, closely tied with the CheMeleon fingerprint but worse than
+          Mordred3D. Given its tiny dimension compared to most alternatives, its performance here is
+          impressive.
+        </p>
+        <p>
+          Looking in more detail within fingerprint families there are some interesting results. In
+          many cases we see several fingerprints that are not significantly different from the one
+          with the best MAE score. In almost all families, larger fingerprint sizes (4096 bit count)
+          improved significantly over smaller ones (2048 or 1024 bit count). It might have been a
+          good idea to test even larger bit counts. For ECFPs, the best combinations had a radius 2,
+          beating fingerprints with radius 3. In addition, count-based fingerprints often beat binary
+          ones, reducing the MAE value by about 0.02. A final comparison I checked too late was
+          Mordred3D vs Mordred2D, the difference is tiny and probably I could have just used the
+          simpler representation later in the notebook.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2025_05_01_ml_optimization/rf_fp_cross_family_mcs.png"
+               alt="Multiple comparison of means (Tukey HSD) heatmap showing MAE for the best fingerprint per family against CheMeleon. Cells show mean MAE difference.">
+          <figcaption>Cross-family fingerprint comparison: the best-performing variant from each fingerprint family versus CheMeleon. Mordred3D achieves the lowest MAE among all RF-based models, with MQN and the CheMeleon internal fingerprint as the next closest.</figcaption>
+        </figure>
+
+        <h3>Part 3: Scoring Ensemble</h3>
+
+        <p>
+          Even when ML models have similar performance, often they make different mistakes. Combining
+          predictions from different models can be a useful way to generate consensus predictions that
+          overall reduce the rate or magnitude of mistakes. And if the predictions are already
+          computed, it is computationally very cheap to test different aggregation or ensemble
+          strategies.
+        </p>
+        <p>
+          For this part I took the predictions of the four baseline models from the previous post
+          and generated different ensembles as a weighted mean of the four individual scores
+          following these rules:
+        </p>
+        <ol>
+          <li>the weight for each score is either 0, 1 or 2</li>
+          <li>not all weights can be 2 and not all can be 0</li>
+          <li>combinations of 3 weights at 0 are excluded except the CheMeleon baseline (weights 0 for Chemprop, RF and GBM; 1 for CheMeleon)</li>
+        </ol>
+        <p>
+          This provides 72 potential combinations to explore and it's unfeasible to plot all
+          comparisons. <strong>This experiment is the first time I see an improvement in MAE over baseline
+          CheMeleon.</strong> <strong>The best ensembles tend to disregard RF and GBM (give them weights of 0).</strong> In
+          the best combination, CheMeleon and Chemprop are used but predictions from CheMeleon are
+          prioritized. The combinations that improved on CheMeleon were:
+        </p>
+
+        <p><strong>CheMeleon baseline MAE: 0.4983</strong></p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Ensemble</th>
+              <th style="text-align:center">RF</th>
+              <th style="text-align:center">GBM</th>
+              <th style="text-align:center">Chemprop</th>
+              <th style="text-align:center">CheMeleon</th>
+              <th style="text-align:center">MAE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>ens_rf0_gbm0_cp1_ch2</code></td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center"><strong>0.4836</strong></td></tr>
+            <tr><td><code>ens_rf0_gbm0_cp1_ch1</code></td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">1</td><td style="text-align:center">0.4837</td></tr>
+            <tr><td><code>ens_rf0_gbm0_cp2_ch2</code></td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">2</td><td style="text-align:center">2</td><td style="text-align:center">0.4837</td></tr>
+            <tr><td><code>ens_rf0_gbm0_cp2_ch1</code></td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">0.4889</td></tr>
+            <tr><td><code>ens_rf1_gbm0_cp2_ch2</code></td><td style="text-align:center">1</td><td style="text-align:center">0</td><td style="text-align:center">2</td><td style="text-align:center">2</td><td style="text-align:center">0.4895</td></tr>
+            <tr><td><code>ens_rf0_gbm1_cp2_ch2</code></td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center">2</td><td style="text-align:center">0.4905</td></tr>
+            <tr><td><code>ens_rf1_gbm0_cp1_ch2</code></td><td style="text-align:center">1</td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center">0.4928</td></tr>
+            <tr><td><code>ens_rf0_gbm1_cp1_ch2</code></td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center">0.4938</td></tr>
+            <tr><td><code>ens_rf1_gbm0_cp2_ch1</code></td><td style="text-align:center">1</td><td style="text-align:center">0</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">0.4968</td></tr>
+            <tr><td><code>ens_rf0_gbm1_cp2_ch1</code></td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">2</td><td style="text-align:center">1</td><td style="text-align:center">0.4982</td></tr>
+            <tr><td>CheMeleon baseline</td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">0</td><td style="text-align:center">1</td><td style="text-align:center">0.4983</td></tr>
+          </tbody>
+        </table>
+        <p>Weights are relative (normalized to sum = 1 at prediction time).</p>
+
+        <h3>Part 4: Multitask Learning</h3>
+
+        <p>
+          All the models so far have been trained only on pEC<sub>50</sub> data of the dose response
+          screen. This is because that is the goal of the challenge and the main way models are
+          assessed. But there is a wealth of additional data provided in the challenge. In this
+          experiment, I want to see if adding some of this data to the compounds in the training set
+          improves performance. It is important to note that in all the models trained in this
+          section, the number of compounds stays the same; only compounds with pEC<sub>50</sub>
+          data in the dose response screen are included.
+        </p>
+        <p>I tested several combinations of properties:</p>
+
+<pre><code>_SCENARIOS: list[tuple[str, list[str]]] = [
+    ("st_pec50",       ["pEC50_dr"]),
+    ("mt_emax_dr",     ["pEC50_dr", "Emax_dr"]),
+    ("mt_counter",     ["pEC50_dr", "pEC50_counter", "Emax_counter"]),
+    ("mt_hit10",       ["pEC50_dr", "10.0_is_hit"]),
+    ("mt_hit30",       ["pEC50_dr", "30.0_is_hit"]),
+    ("mt_hits",        ["pEC50_dr", "10.0_is_hit", "30.0_is_hit"]),
+    ("mt_all_counter", ["pEC50_dr", "pEC50_counter", "Emax_dr", "Emax_counter"]),
+    ("mt_all",         ["pEC50_dr", "pEC50_counter", "Emax_dr", "Emax_counter",
+                        "10.0_is_hit", "30.0_is_hit"]),
+]</code></pre>
+
+        <p>
+          As a control I include the single task test. Missing data for any assay is left blank and
+          is ignored in computing the loss during training. I trained Chemprop models rather than
+          CheMeleon ones due to speed considerations and I expect results can be extrapolated to
+          CheMeleon.
+        </p>
+        <p>
+          It was discouraging to see that <strong>none of the models improved on the CheMeleon baseline</strong>.
+          Worse, the model with the best MAE was <code>st_pec50</code>, <strong>the single task control
+          model</strong>. It could be something wrong with how I set up Chemprop for multitask learning. It
+          might be that I need to use the parameter <code>task-weights</code> to emphasize the
+          prediction of <code>pEC50_dr</code> and reduce it for other tasks. Overall this is
+          something I will need to give more consideration in future notebooks if I want to dig
+          deeper.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2025_05_01_ml_optimization/multitask_boxplots.png"
+               alt="Boxplots of MAE, R², ρ, and hit-rate across the eight multitask scenarios and CheMeleon, evaluated on 5×5 cross-validation.">
+          <figcaption>Metric distributions for all multitask scenarios. The single-task control <code>st_pec50</code> is competitive with or better than all multitask variants.</figcaption>
+        </figure>
+
+        <h3>Part 5: Hyperparameter Optimization</h3>
+
+        <p>
+          The process of hyperparameter optimization (HPO) is very typical in a ML workflow. Some
+          models, like RandomForest, tend to be very robust, and HPO doesn't tend to change
+          performance much from a baseline. In other models, like deep neural networks, it can have
+          a big impact.
+        </p>
+        <p>
+          There are many ways to guide a HPO process. You normally first set a series of
+          hyperparameters and a set or range of values, this defines the search space. You can try
+          to thoroughly test all possible combinations of hyperparameter values, but that tends to be
+          unfeasible. You can just set a budget of models to train and get a set of random
+          combinations. Here, I wanted to use Optuna to guide the process so it is not a random
+          selection. Optuna is a widely used library for HPO; the first few runs might use a random
+          combination of values, but over time Optuna optimizes based on model performance towards
+          favorable hyperparameter combinations.
+        </p>
+        <p>
+          My idea was to perform HPO on Chemprop as it is generally a smaller model that trains
+          faster. I would not repeat the parameters I already tested in Part 1, as those will be set
+          differently by CheMeleon. However, either I configured the run wrong or simply
+          underestimated the amount of time it would take. When I started the code it reported it
+          would take around 30 hours. <strong>72 hours in, it was not yet done</strong> and it reported it would still
+          take several more days. Each Chemprop trial seemed to take exponentially longer and the
+          best MAE reported was still around 0.50. I decided to stop it and push back this effort
+          until a later point. I moved the code into a different notebook for the future.
+        </p>
+
+        <h3>Final Part: Generating New Test Set Predictions</h3>
+
+        <p>
+          Over the course of this post, I tested four different strategies to improve performance of
+          the four models I have defined so far. While only prediction ensemble beat the CheMeleon
+          baseline from the previous post, I did get meaningful improvements on Chemprop and RF
+          models. So I chose to focus on ensembling predictions for the test set. As we are still in
+          Phase 1 of the competition, we are allowed to upload predictions several times a day and
+          see the performance in the analog set 1.
+        </p>
+        <p>I generated four different submission files using ensembles of three models trained on the whole training dataset:</p>
+        <ol>
+          <li>Baseline CheMeleon (the predictions I generated in the last post)</li>
+          <li>Chemprop with a depth value of 6</li>
+          <li>Random Forest trained on Mordred3D descriptors</li>
+        </ol>
+        <p>
+          The four different submissions came from different weights assigned to these three models,
+          choosing from those combinations that beat the CheMeleon baseline. The naming scheme is
+          <code>rfX_cpY_chZ</code>, where X, Y and Z are the weights for RF, Chemprop, and
+          CheMeleon, respectively.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Set</th>
+              <th>MAE</th>
+              <th>R²</th>
+              <th>ρ</th>
+              <th>Ranking</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>CheMeleon only</td><td>0.574</td><td>0.336</td><td>0.708</td><td>109 of 155</td></tr>
+            <tr><td><code>rf0_cp1_ch2</code></td><td>0.521</td><td>0.430</td><td>0.750</td><td>65 of 156</td></tr>
+            <tr><td><code>rf1_cp1_ch2</code></td><td>0.515</td><td>0.454</td><td>0.754</td><td>61 of 156</td></tr>
+            <tr><td><code>rf1_cp2_ch2</code></td><td>0.507</td><td>0.473</td><td>—</td><td>51 of 156</td></tr>
+            <tr><td><code>rf0_cp1_ch1</code></td><td>0.503</td><td>0.463</td><td>0.770</td><td>50 of 159</td></tr>
+          </tbody>
+        </table>
+
+        <p>
+          My previous submission had over time slid back in the ranking from 57 of 84 to 109 of 155. 
+          Those numbers show many new contestants have joined the competition since I last
+          submitted. I list the ensembles in order of upload, and it was coincidence that they all
+          kept improving the performance. I expected <code>rf1_cp1_ch2</code> to be the best
+          combination, but I was wrong. While ensembling predictions in the 5×5 CV test led to
+          modest improvements (from 0.50 to 0.48), in the test set we see <strong>a big boost in performance
+          from 0.57 to 0.50</strong>. The gap between MAE values in the 5×5 CV and test set reduced a lot
+          compared to the previous post.
+        </p>
+
+        <h3>Next Steps</h3>
+
+        <p>
+          There are several possible things to try next and I am still a bit undecided on what to
+          prioritize as I also have less free time at the moment. It is likely the next post will
+          take some additional time to come out. Some of the options are:
+        </p>
+        <ul>
+          <li>keep trying multitask learning and HPO</li>
+          <li>pretrain Chemprop/CheMeleon models on single dose or counter data (this is something I saw another contestant, <a href="https://github.com/JacksonBurns/openadmet_pxr" target="_blank" rel="noopener">JacksonBurns</a>, do in a previous submission)</li>
+          <li>test additional models to include and improve the ensemble like TabPFN (which I heard about in the Discord chat) or Macau (this would be another multitask attempt)</li>
+          <li>look for potential open data that could improve multitask or pretraining scenarios</li>
+        </ul>
+
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
