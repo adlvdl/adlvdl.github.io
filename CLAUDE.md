@@ -126,7 +126,7 @@ Every post must include a comments section placed **after the post body and befo
             s.dataset.reactionsEnabled = '0';
             s.dataset.emitMetadata = '0';
             s.dataset.inputPosition = 'top';
-            s.dataset.theme = theme === 'dark' ? 'github-dark' : 'github-light';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
             s.dataset.lang = 'en';
             s.dataset.loading = 'lazy';
             s.crossOrigin = 'anonymous';
@@ -141,7 +141,7 @@ The `toggleTheme()` function in every post must also include the Giscus postMess
 
 ```js
       var iframe = document.querySelector('iframe.giscus-frame');
-      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'github-dark' : 'github-light' } } }, 'https://giscus.app'); }
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
 ```
 
 **Note:** Custom CSS files `css/giscus-light.css` and `css/giscus-dark.css` exist but are not currently used — Giscus's built-in themes are more reliable. Revisit custom theming later.
