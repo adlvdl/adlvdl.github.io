@@ -1,12 +1,15 @@
 /* Giscus custom theme — delavega.ai light */
-:root {
+/* Variables are set on both :root and main because Giscus scopes its own
+   defaults to the main element, which wins over :root in the cascade. */
+:root,
+main {
   --color-canvas-default: #ffffff;
   --color-canvas-subtle: #eaecf4;
   --color-canvas-inset: #f0f3f8;
   --color-canvas-overlay: #ffffff;
   --color-border-default: #0f1a28;
-  --color-border-muted: #0f1a28;
-  --color-border-subtle: rgba(15,26,40,0.4);
+  --color-border-muted: rgba(15,26,40,0.5);
+  --color-border-subtle: rgba(15,26,40,0.3);
   --color-fg-default: #0f1a28;
   --color-fg-muted: #3a5068;
   --color-fg-subtle: #7888a0;
