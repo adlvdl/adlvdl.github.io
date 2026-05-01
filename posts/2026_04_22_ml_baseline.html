@@ -512,7 +512,7 @@
             s.dataset.reactionsEnabled = '0';
             s.dataset.emitMetadata = '0';
             s.dataset.inputPosition = 'top';
-            s.dataset.theme = 'https://adlvdl.github.io/css/giscus-' + theme + '.css';
+            s.dataset.theme = theme === 'dark' ? 'github-dark' : 'github-light';
             s.dataset.lang = 'en';
             s.dataset.loading = 'lazy';
             s.crossOrigin = 'anonymous';
@@ -547,7 +547,7 @@
       try { localStorage.setItem('theme', next); } catch(e) {}
       document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
       var iframe = document.querySelector('iframe.giscus-frame');
-      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: 'https://adlvdl.github.io/css/giscus-' + next + '.css' } } }, 'https://giscus.app'); }
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'github-dark' : 'github-light' } } }, 'https://giscus.app'); }
     }
     function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
     document.addEventListener('click', function(e) {

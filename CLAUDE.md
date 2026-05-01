@@ -106,7 +106,7 @@ The script sets `data-theme` on `<html>` and also applies `backgroundColor` dire
 
 ### Comments block (Giscus)
 
-Every post must include a comments section placed **after the post body and before the `post-nav` back link**. Add this block verbatim (the inline script reads `data-theme` at load time to pick the correct custom CSS):
+Every post must include a comments section placed **after the post body and before the `post-nav` back link**. Add this block verbatim (uses Giscus built-in `github-light` / `github-dark` themes):
 
 ```html
       <div class="post-comments">
@@ -126,7 +126,7 @@ Every post must include a comments section placed **after the post body and befo
             s.dataset.reactionsEnabled = '0';
             s.dataset.emitMetadata = '0';
             s.dataset.inputPosition = 'top';
-            s.dataset.theme = 'https://adlvdl.github.io/css/giscus-' + theme + '.css';
+            s.dataset.theme = theme === 'dark' ? 'github-dark' : 'github-light';
             s.dataset.lang = 'en';
             s.dataset.loading = 'lazy';
             s.crossOrigin = 'anonymous';
@@ -141,10 +141,10 @@ The `toggleTheme()` function in every post must also include the Giscus postMess
 
 ```js
       var iframe = document.querySelector('iframe.giscus-frame');
-      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: 'https://adlvdl.github.io/css/giscus-' + next + '.css' } } }, 'https://giscus.app'); }
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'github-dark' : 'github-light' } } }, 'https://giscus.app'); }
 ```
 
-Custom theme CSS lives in `css/giscus-light.css` and `css/giscus-dark.css`.
+**Note:** Custom CSS files `css/giscus-light.css` and `css/giscus-dark.css` exist but are not currently used — Giscus's built-in themes are more reliable. Revisit custom theming later.
 
 
 ## 6. Adding a new page
