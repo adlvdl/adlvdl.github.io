@@ -104,6 +104,48 @@ The script sets `data-theme` on `<html>` and also applies `backgroundColor` dire
 - Also update the blog list entry in `blog.html` and the blog posts section in `publications.html`
 - The language in the blog is American English, the tone is first person and scientific
 
+### Comments block (Giscus)
+
+Every post must include a comments section placed **after the post body and before the `post-nav` back link**. Add this block verbatim (the inline script reads `data-theme` at load time to pick the correct custom CSS):
+
+```html
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = 'https://adlvdl.github.io/css/giscus-' + theme + '.css';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+```
+
+The `toggleTheme()` function in every post must also include the Giscus postMessage so the widget switches when the ◐ button is clicked. Add these two lines at the end of `toggleTheme()`, before the closing `}`:
+
+```js
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: 'https://adlvdl.github.io/css/giscus-' + next + '.css' } } }, 'https://giscus.app'); }
+```
+
+Custom theme CSS lives in `css/giscus-light.css` and `css/giscus-dark.css`.
+
 
 ## 6. Adding a new page
 

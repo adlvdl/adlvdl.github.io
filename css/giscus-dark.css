@@ -1,0 +1,35 @@
+/* Giscus custom theme — delavega.ai dark */
+:root {
+  --color-canvas-default: #111e2c;
+  --color-canvas-subtle: #0b1420;
+  --color-canvas-inset: #0e1926;
+  --color-canvas-overlay: #111e2c;
+  --color-border-default: #162232;
+  --color-border-muted: #162232;
+  --color-border-subtle: rgba(22,34,50,0.5);
+  --color-fg-default: #d4e0ec;
+  --color-fg-muted: #7a9cb8;
+  --color-fg-subtle: #6a8ea8;
+  --color-fg-on-emphasis: #0e1926;
+  --color-accent-fg: #5ab4e0;
+  --color-accent-muted: rgba(90,180,224,0.2);
+  --color-accent-subtle: rgba(90,180,224,0.1);
+  --color-accent-emphasis: #5ab4e0;
+  --color-btn-text: #d4e0ec;
+  --color-btn-bg: #0e1926;
+  --color-btn-border: #162232;
+  --color-btn-hover-bg: #0b1420;
+  --color-btn-hover-border: #162232;
+  --color-btn-active-bg: #162232;
+  --color-btn-primary-text: #0e1926;
+  --color-btn-primary-bg: #5ab4e0;
+  --color-btn-primary-border: #5ab4e0;
+  --color-btn-primary-hover-bg: #7acce8;
+  --color-btn-primary-hover-border: #7acce8;
+  --color-btn-primary-disabled-text: rgba(14,25,38,0.5);
+  --color-btn-primary-disabled-bg: rgba(90,180,224,0.5);
+  --color-btn-primary-disabled-border: rgba(90,180,224,0.5);
+  --color-neutral-muted: rgba(22,34,50,0.6);
+  --color-social-reaction-bg-hover: rgba(90,180,224,0.1);
+  --color-social-reaction-bg-reacted-hover: rgba(90,180,224,0.15);
+}

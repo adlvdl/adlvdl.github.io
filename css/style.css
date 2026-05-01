@@ -827,7 +827,25 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
 }
 
 
-/* ── 11. PUBLICATIONS ────────────────────────────────── */
+/* ── 11. COMMENTS (Giscus) ───────────────────────────── */
+.post-comments {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.post-comments-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 1.5rem;
+}
+
+/* ── 12. PUBLICATIONS ────────────────────────────────── */
 
 .pub-section {
   margin-bottom: 2.5rem;
@@ -875,7 +893,7 @@ p  { margin-bottom: 1rem; color: var(--text-2); }
 }
 
 
-/* ── 12. ABOUT PAGE ──────────────────────────────────── */
+/* ── 13. ABOUT PAGE ──────────────────────────────────── */
 
 .about-section {
   padding: 2.5rem 0;
