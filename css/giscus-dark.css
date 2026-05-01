@@ -1,5 +1,6 @@
 /* Giscus custom theme — delavega.ai dark */
-:root {
+:root,
+main {
   --color-canvas-default: #111e2c;
   --color-canvas-subtle: #0b1420;
   --color-canvas-inset: #0e1926;
