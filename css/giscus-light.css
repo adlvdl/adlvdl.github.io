@@ -4,9 +4,9 @@
   --color-canvas-subtle: #eaecf4;
   --color-canvas-inset: #f0f3f8;
   --color-canvas-overlay: #ffffff;
-  --color-border-default: #9aaec4;
-  --color-border-muted: #b0bed4;
-  --color-border-subtle: rgba(154,174,196,0.6);
+  --color-border-default: #0f1a28;
+  --color-border-muted: #0f1a28;
+  --color-border-subtle: rgba(15,26,40,0.4);
   --color-fg-default: #0f1a28;
   --color-fg-muted: #3a5068;
   --color-fg-subtle: #7888a0;
@@ -17,9 +17,9 @@
   --color-accent-emphasis: #1a4a78;
   --color-btn-text: #0f1a28;
   --color-btn-bg: #f4f6fb;
-  --color-btn-border: #9aaec4;
+  --color-btn-border: #0f1a28;
   --color-btn-hover-bg: #eaecf4;
-  --color-btn-hover-border: #8a9eb8;
+  --color-btn-hover-border: #0f1a28;
   --color-btn-active-bg: #d0d8e8;
   --color-btn-primary-text: #ffffff;
   --color-btn-primary-bg: #1a4a78;
