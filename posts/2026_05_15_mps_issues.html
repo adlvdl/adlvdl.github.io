@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stalling the M4 engine — delavega.ai</title>
+  <meta name="description" content="On MPS memory management issues with the M4 Mac Mini: GPU stalls during Chemprop HPO and memory allocation failures with TabPFN.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-05-15</span>
+        <span class="mono-tag">hardware</span>
+        <h1>Stalling the M4 engine</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          I am still working on my next post for the PXR challenge as I hope to upload a few more
+          predictions before the end of the first phase on May 25. However, progress has been slow
+          due to a set of issues related to the machine I use for this challenge, a base M4 Mac Mini.
+          When I bought the machine I thought it was great hardware for the price. For around 700
+          euros, I got a decent day to day machine with a GPU that had access to 16GB of RAM. That
+          was very attractive for light machine learning work. I knew I was not going to be training
+          huge transformer models on this machine, but alternatives like the Strix Halo platform or a
+          PC with a gaming or workstation GPU were generally more expensive. And all was fine until,
+          as mentioned in <a href="2026_05_01_ml_optimization.html">my last post</a>, I tried to
+          perform hyperparameter optimization (HPO) on chemprop models.
+        </p>
+
+        <h2>It just keeps taking longer</h2>
+
+        <p>
+          Chemprop is generally a small model that, on the standard 5x5 CV data splits I have been
+          using, trains a model and predicts on the test set in about 2 minutes on my machine. So a
+          full set of 5x5CV folds generally takes less than an hour. For the power that this model
+          has shown, it is very light and efficient. CheMeleon makes the Chemprop model larger,
+          taking comparatively much longer time for the increase in performance it provides.
+        </p>
+
+        <p>
+          I set up the HPO using Optuna, making each experiment run a 1x5CV so performance would be
+          measured on the whole data set. I initially set it to do 30 experiments. 30 experiments * 5
+          folds per experiment = 150 models trained. At 2 minutes per model, it seemed a reasonable
+          amount of training. It should have been done overnight easily.
+        </p>
+
+        <p>
+          The next morning, it had completed ten experiments and reported it would take a full day to
+          finish. My thought was that some of the hyperparameters I was using were pushing model
+          training time longer. I was not concerned. However, after 24 hours of training it was not
+          yet done. It had completed 20 experiments but said the last 10 would take two more days. At
+          that point I stopped the process, scrapped the code from
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/3_ml_optimization.py" target="_blank" rel="noopener">notebook #3</a>
+          and completed the <a href="2026_05_01_ml_optimization.html">third post</a> without it.
+          One mistake I made was not to set up the Optuna process so each experiment was saved as it
+          was completed. So a repeat would start from scratch. In my defense, I didn't think it was
+          worth it if the HPO would finish in 5 hours.
+        </p>
+
+        <h2>My Mac is not a night person</h2>
+
+        <p>
+          When working on notebook #4, I wanted to tackle the HPO process again. I set it up better:
+          I kept track of each experiment as it finished and I first tested the training time of a
+          model for the hyperparameters I was modifying. I started thinking something was up after
+          checking the timings of the different hyperparameters. None of them had a large effect on
+          how long the model took to train to explain the increase in run time of the previous HPO
+          process. And the new, ongoing HPO seemed to be showing similar signs of experiments taking
+          longer over time. And so, I started looking at the logs.
+        </p>
+
+        <p>
+          Before getting into the log data, I wanted to briefly detail how I apply Chemprop on the
+          notebooks. You can run Chemprop on a command line interface program (CLI) or using a series
+          of Python imports and functions based on PyTorch (API). My first version of running
+          Chemprop used the Python API. But it encountered issues in the notebook, where torch was
+          crashing due to a conflict with another library the notebook was using. Sadly I don't
+          recall the whole issue, I think it was related to OpenMP. I do remember Claude trying to
+          set a few environment variables in the notebook to stop the issue but that solution didn't
+          work. So the code uses the CLI program, using subprocess to call the train and predict
+          commands.
+        </p>
+
+        <p>
+          The first thing I checked in the logs was how long it took models to train. The runtime
+          varied a lot. There was a large set of models that trained within 2 minutes, but also some
+          that took an order of magnitude more. In worst cases, training took almost an hour. Looking
+          specifically at the runs from notebook #4's HPO, a pattern began to emerge.
+        </p>
+
+        <figure class="post-figure">
+          <img src="../images/posts/2026_05_15_mps_issues/mps_gap_distribution.png" alt="Distribution of Chemprop training durations">
+          <figcaption>Distribution of Chemprop training duration. The long tail (gaps of tens of minutes to an hour) is the stalling behavior that was inflating total HPO runtime.</figcaption>
+        </figure>
+
+        <p>
+          The plot below shows stall rate by time of day, where a stall is defined as a model that
+          took more than 2.5 minutes to train. At first glance, it pointed to macOS running
+          aggressive background processes during the night. Worth noting: Activity Monitor never
+          showed concerning memory pressure throughout (the graph stayed in the green), so the OS
+          didn't seem overwhelmed.
+        </p>
+
+        <figure class="post-figure">
+          <img src="../images/posts/2026_05_15_mps_issues/mps_stall_by_hour.png" alt="Stall rate by hour of day">
+          <figcaption>Stall rate by hour of day. The concentration during night hours initially pointed toward macOS background activity as the culprit.</figcaption>
+        </figure>
+
+        <p>
+          The previous plot turned out to be slightly misleading. Plotting the stall rate as a
+          function of time elapsed since starting the HPO told a clearer story: after a few hours,
+          stalls were essentially guaranteed.
+        </p>
+
+        <figure class="post-figure">
+          <img src="../images/posts/2026_05_15_mps_issues/mps_stall_over_time.png" alt="Stall rate as a function of time elapsed since HPO start">
+          <figcaption>Stall rate versus time elapsed since the HPO process started. Stalls become near-universal after a few hours regardless of time of day, pointing to progressive GPU memory exhaustion rather than a scheduling issue.</figcaption>
+        </figure>
+
+        <figure class="post-figure">
+          <img src="../images/posts/2026_05_15_mps_issues/mps_fold_times_scatter.png" alt="Scatter plot of Chemprop fold training times across HPO experiments">
+          <figcaption>Training time per fold across HPO experiments. Individual fold runtimes are broadly consistent, but a growing number of outliers marks the onset of stalling.</figcaption>
+        </figure>
+
+        <p>
+          After a bit more troubleshooting, Claude suggested the stalls were due to poor memory
+          management of the GPU in the M4 chip. Supposedly, after the Chemprop train subprocess
+          finished, the memory should be released. But that didn't seem to be the case.
+        </p>
+
+        <p>
+          I tested running an API version of the model within a subprocess, explicitly calling
+          <code>torch.mps.synchronize()</code> and <code>torch.mps.empty_cache()</code>. This
+          should release the memory from the GPU before finishing the script. While this seemed to
+          work a bit better, it didn't remove the stalls. On top of that, the API version produced a
+          MAE 0.05 higher than the CLI version, meaning the two are not equivalent — an unexpected
+          and unwelcome difference. The main solution seemed to be to restart the computer every once
+          in a while. Bonus mistake: the log files for chemprop training were in a temporary folder
+          and restarting deleted most of them, so I lost some of the logs and the images I show on
+          this post are from a fraction of the trained models.
+        </p>
+
+        <h2>Why won't it fit?</h2>
+
+        <p>
+          The second issue I found came up when I tried TabPFN. This is a new model for me, I heard
+          about it in the challenge Discord. It runs some form of neural network on tabular data. I
+          wanted to compare it to RF on the same fingerprints that seemed to work best. However, the
+          model would crash, saying it couldn't allocate enough memory. The frustrating part was that
+          the amount of memory it wanted to allocate should have fit within my RAM, but apparently
+          the GPU can't access all of it. Supposedly you can use
+          <code>PYTORCH_MPS_HIGH_WATERMARK_RATIO</code> to manage how much memory you can allocate,
+          but it didn't seem to make a difference in my case.
+        </p>
+
+        <p>
+          These issues could be implementation errors on my part, and I would love to hear if there
+          are ways to improve how I use MPS to run ML models in my Mac Mini. I sometimes regret not
+          spending more and getting a more powerful machine. However, I bought the machine shortly
+          after being laid off last year. At the time, I only had a crappy Windows laptop (which I
+          am using to write this post from the nice library we have by the river in Seville).
+          Considering I was planning to take some time off and live off unemployment and severance
+          money, I cut myself plenty of slack on the decision to buy this machine and not something
+          more expensive. And I am generally pretty happy with the machine, but these last few weeks
+          have shown me some limitations that I was not expecting.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← All posts</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
