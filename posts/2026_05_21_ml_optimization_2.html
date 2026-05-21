@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #4: Almost at the end of phase 1 — delavega.ai</title>
+  <meta name="description" content="Testing Macau and TabPFN, hyperparameter optimization for all models, Macau multitask learning, and an expanded ensemble for the OpenADMET PXR induction challenge.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-05-21</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #4: Almost at the end of phase 1</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          Next week, phase 1 of the PXR challenge will close, and the organizers will release part
+          of the blinded test set. I think at that point, we will be able to submit and be assessed
+          on the second part of the test set, but we won't be able to see how we are doing in the
+          leaderboard. Before the end of phase 1 I wanted to perform a bit more optimization on the
+          models and ensembles I was generating, including testing a few new model architectures.
+          If you have been following along, you may have also read
+          <a href="2026_05_15_mps_issues.html">my recent post</a> about the MPS memory issues on
+          my M4 Mac Mini that slowed progress considerably.
+        </p>
+        <p>In this post I will show the results of:</p>
+        <ul>
+          <li>testing Macau and TabPFN, new models based on fingerprints</li>
+          <li>performing hyperparameter optimization (HPO) for most of the models</li>
+          <li>testing multitarget prediction on Macau and pretraining models on Chemprop</li>
+          <li>expanding the ensembling approach that worked so well in the <a href="2026_05_01_ml_optimization.html">last notebook</a></li>
+        </ul>
+        <p>
+          As always, the code of the
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/4_ml_optimization_2.py" target="_blank" rel="noopener">notebook</a>
+          is available as well as an
+          <a href="../html_notebooks/pxr_challenge/4_ml_optimization_2.html">HTML version</a>
+          to explore the tables and plots in more detail.
+        </p>
+
+        <h3>Part 1 — Macau and TabPFN</h3>
+
+        <p>
+          Macau is a Bayesian matrix factorization method implemented in the <code>smurff</code>
+          package. It uses the fingerprint matrix as side information during factorization, which
+          allows it to model compound-property relationships in a way that is fundamentally different
+          from tree ensembles. I had previous experience with Macau during my postdoc (see
+          <a href="https://dx.doi.org/10.1186/s13321-018-0281-z" target="_blank" rel="noopener">paper</a>).
+          It performed similarly to DNN in that paper and not many people know about this type of
+          approach. In a multi-target setting it can even have an assay side information matrix,
+          although I have never tested that.
+        </p>
+        <p>
+          I first compared Macau to Random Forest (RF) and XGBoost on the three top fingerprints
+          from the last analysis: Mordred 2D descriptors, MQN counts, and the CheMeleon learned
+          embedding. The nine combinations (three models × three fingerprints) were evaluated using
+          5×5 nested CV with the same protocol as previous notebooks.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis1_mcs_mae.png"
+               alt="Pairwise MAE comparison for RF, XGBoost and Macau on the top three fingerprints — analysis set 1">
+          <figcaption>Tukey HSD pairwise MAE comparison for the Macau comparison.</figcaption>
+        </figure>
+
+        <p>
+          First point is that none of the models improved upon the CheMeleon baseline.
+          Macau with CheMeleon fingerprints improved upon RF and XGBoost using Mordred descriptors.
+          A curiosity is that with MQN fingerprints, Macau performed much worse than RF or XGBoost
+          on that fingerprint. At first glance, Macau based on CheMeleon fingerprints seems like a
+          good addition to our ensemble model (more on that later in this post).
+        </p>
+        <p>
+          TabPFN is another new method for this analysis, and a new method for me. TabPFN (Tabular
+          Prior-data Fitted Networks) is a transformer trained offline on a large number of
+          synthetically generated tabular datasets sampled from a prior distribution over datasets.
+          At inference time, the entire training set is passed as context to the transformer. I have
+          seen this method discussed in the PXR challenge Discord and wanted to give it a spin.
+          Similar to Macau, I tested the three fingerprints that worked best for RF.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis3_mcs_mae.png"
+               alt="Pairwise MAE comparison for TabPFN compared to CheMeleon and RF">
+          <figcaption>Tukey HSD pairwise MAE comparison for the TabPFN comparison.</figcaption>
+        </figure>
+
+        <p>
+          My first surprise was that we finally have a baseline model that improves upon CheMeleon.
+          Both CheMeleon fingerprints and Mordred-based TabPFN outperformed CheMeleon. The model
+          based on MQN performed poorly, in comparison, but not as bad as Macau+MQN did. Again,
+          this seems a useful model to include in the ensemble.
+        </p>
+
+        <h3>Part 2 — Chemprop pretraining</h3>
+
+        <p>
+          For this test, I first train a Chemprop model on some of the additional data like the
+          single dose screen, before training a standard model. The idea is that the pretraining
+          will improve the initial weighting of the model and lead to a better model. I tested the
+          following settings:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Columns used</th>
+              <th>Task</th>
+              <th>Compounds</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>sd10_reg</code></td>
+              <td><code>10.0_log2_fc</code></td>
+              <td>regression</td>
+              <td>~10 747</td>
+              <td>10 µM single-dose; includes DR-overlap compounds</td>
+            </tr>
+            <tr>
+              <td><code>sd30_reg</code></td>
+              <td><code>30.0_log2_fc</code></td>
+              <td>regression</td>
+              <td>~9 523</td>
+              <td>30 µM single-dose; includes DR-overlap compounds</td>
+            </tr>
+            <tr>
+              <td><code>sd10_cls</code></td>
+              <td><code>10.0_is_hit</code></td>
+              <td>classification</td>
+              <td>~10 747</td>
+              <td>Same as sd10_reg but predicting hit/non-hit</td>
+            </tr>
+            <tr>
+              <td><code>sd30_cls</code></td>
+              <td><code>30.0_is_hit</code></td>
+              <td>classification</td>
+              <td>~9 523</td>
+              <td>Same as sd30_reg but predicting hit/non-hit</td>
+            </tr>
+            <tr>
+              <td><code>counter_ic50</code></td>
+              <td><code>pEC50_counter</code></td>
+              <td>regression</td>
+              <td>2 646</td>
+              <td>All counter compounds are also in DR — mild label-leakage risk</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          In both cases, the model will see compounds that will be in the test set, potentially
+          leading to a case of information leakage. However, that concern was mostly unfounded when
+          I saw the results.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis2_mcs_mae.png"
+               alt="Pairwise MAE comparison for pretrained Chemprop models">
+          <figcaption>Tukey HSD pairwise MAE comparison for comparison of pretrained Chemprop models.</figcaption>
+        </figure>
+
+        <p>
+          While one setting, <code>sd30_reg</code>, led to smaller MAE values, the differences from
+          the base Chemprop model were not significant. Most other models performed worse, especially
+          those that pretrained a classification model. This is likely an implementation mistake on
+          my part, because those results look very bad. Overall, it didn't seem the increased
+          complexity was worth it.
+        </p>
+
+        <h3>Part 3 — Macau for multitask learning</h3>
+
+        <p>
+          In the <a href="2026_05_01_ml_optimization.html">previous notebook</a>, multitask learning
+          on Chemprop didn't improve the prediction of the dose response data. However, I thought it
+          was worth a second look with Macau. Matrix factorization methods handle missing data
+          natively (missing target values are simply not used in the factorization loss), which makes
+          them well suited for sparse multitask scenarios like this one. I tested four scenarios, all
+          using the same 5×5 CV splits as in other analyses:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th>
+              <th>Train rows</th>
+              <th>Targets</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>base</code></td>
+              <td>4 138</td>
+              <td>pEC50<sub>dr</sub></td>
+              <td>DR compounds only — from Analysis 1 (<code>macau_chemeleon</code>)</td>
+            </tr>
+            <tr>
+              <td><code>+sd_cols</code></td>
+              <td>4 138</td>
+              <td>pEC50<sub>dr</sub> + 10 µM log₂FC</td>
+              <td>Adds single-dose signal for ~66 % of DR compounds</td>
+            </tr>
+            <tr>
+              <td><code>+counter</code></td>
+              <td>4 138</td>
+              <td>pEC50<sub>dr</sub> + pEC50<sub>counter</sub></td>
+              <td>Adds counter-assay IC50 for ~64 % of DR compounds</td>
+            </tr>
+            <tr>
+              <td><code>+sd_counter</code></td>
+              <td>4 138</td>
+              <td>pEC50<sub>dr</sub> + 10 µM log₂FC + pEC50<sub>counter</sub></td>
+              <td>Both auxiliary columns, DR compounds only</td>
+            </tr>
+            <tr>
+              <td><code>+sd_rows</code></td>
+              <td>12 269</td>
+              <td>pEC50<sub>dr</sub> + 10 µM log₂FC</td>
+              <td>Augments training matrix with 8 131 SD-only compounds (pEC50<sub>dr</sub> = missing)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          For all settings except <code>+sd_rows</code> I only add columns to the training set
+          (either single dose or counter screen data for training compounds). In
+          <code>+sd_rows</code>, I added additional compounds from the single dose dataset that were
+          not progressed to dose response.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis4_macau_multitask_mcs_mae.png"
+               alt="Pairwise MAE comparison for Macau multitask scenarios">
+          <figcaption>Tukey HSD pairwise MAE comparison across Macau multitask configurations. Results are compared to the single-task Macau and the CheMeleon baseline.</figcaption>
+        </figure>
+
+        <p>
+          This is another test that fails to show an improvement. All models perform extremely
+          poorly, and are not worth considering going forward.
+        </p>
+
+        <h3>Part 4 — Hyperparameter optimization</h3>
+
+        <p>
+          I have already written about <a href="2026_05_15_mps_issues.html">the issues</a> I
+          encountered running HPO for Chemprop. Given the HPO failures in
+          <a href="2026_05_01_ml_optimization.html">notebook #3</a> (due to MPS stalling), I
+          attempted a more targeted approach here. Rather than a broad Optuna search over many
+          hyperparameters, I first ran a sensitivity scan to identify which hyperparameters actually
+          affect performance. This would let me know if any parameter increased the run time
+          substantially.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/sensitivity_scan.png"
+               alt="Hyperparameter sensitivity scan">
+          <figcaption>Sensitivity of MAE to individual hyperparameter values. Parameters with flat sensitivity profiles can be safely excluded from the HPO search space.</figcaption>
+        </figure>
+
+        <p>
+          None of the parameters, other than <code>batch_size</code>, have a large influence on run
+          time. I set up the HPO to perform 50 experiments, and that took a long time to run.
+          And it was mostly for little gain.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/hpo_mcs_mae.png"
+               alt="Pairwise MAE comparison for HPO configurations — full comparison">
+          <figcaption>Tukey HSD pairwise MAE comparison for HPO configurations versus the CheMeleon baseline.</figcaption>
+        </figure>
+
+        <p>
+          The MAE heatmap shows that the HPO increased the performance of Chemprop to the level of
+          CheMeleon, a reduction of around 0.01 MAE. When I translated the best parameter set to
+          CheMeleon, we saw an increase in MAE but it was not significantly different from base
+          CheMeleon. Considering how much slower CheMeleon runs compared to Chemprop I decided not
+          to do a HPO for CheMeleon.
+        </p>
+        <p>
+          I also ran HPO for Macau, RF and XGBoost on their best fingerprint. In this case, I first
+          ran 20 trials for each method. After the trials were done, I checked if any of the
+          hyperparameters were consistently chosen at close to the maximum or minimum value. This
+          happened for <code>n_estimators</code> in XGBoost, which I increased from a maximum of
+          800 to a maximum of 1500. It also happened for <code>nsamples</code> and
+          <code>burnin</code> in Macau, both of which were also increased. Then I ran an additional
+          30 trials.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis5_hpo_mcs_mae.png"
+               alt="Pairwise MAE comparison for HPO configurations — analysis view">
+          <figcaption>Alternative view of the HPO results grouped by configuration type.</figcaption>
+        </figure>
+
+        <p>
+          The improvements here were more significant, especially for XGBoost which jumped from 0.56
+          to 0.52. Macau also showed an improvement but was more moderate.
+        </p>
+
+        <h3>Part 5 — Ensemble</h3>
+
+        <p>
+          As a final analysis I ran an ensemble similar to the one in the
+          <a href="2026_05_01_ml_optimization.html">previous notebook</a>. In this case six models
+          were potentially included as part of the ensemble:
+        </p>
+        <ol>
+          <li>CheMeleon baseline</li>
+          <li>Chemprop with HPO parameters</li>
+          <li>Random Forest with Mordred2D descriptors and HPO parameters</li>
+          <li>XGBoost with Mordred2D descriptors and HPO parameters</li>
+          <li>Macau with CheMeleon fingerprint and HPO parameters</li>
+          <li>TabPFN with CheMeleon fingerprint and base parameters</li>
+        </ol>
+        <p>
+          In addition to the increased number of models, I tested a larger number of potential weight
+          values: <code>{0, ⅕, ¼, ⅓, ½, 1, 2, 3, 4, 5}</code>. As before I tested all potential
+          combinations of weight values for the six models, except where all weight values were zero
+          except one. This meant testing almost 1 million combinations.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_05_21_ml_optimization_2/analysis6_ensemble_mcs_mae.png"
+               alt="Pairwise MAE comparison for ensemble configurations">
+          <figcaption>Tukey HSD pairwise MAE comparison across ensemble configurations. The best ensembles are shown alongside the CheMeleon single-model baseline.</figcaption>
+        </figure>
+
+        <p>
+          The best ensemble reduced MAE to 0.47, the lowest yet. The plot shows the effect of the
+          weight for each individual model. The top row with Chemprop and CheMeleon shows high weight
+          values were generally better. For Random Forest and XGBoost best values were for weights
+          close to zero. Macau's best weight was 1, and TabPFN also had high weight values like
+          Chemprop and CheMeleon.
+        </p>
+
+        <h3>Final Part — Generating New Test Set Predictions</h3>
+
+        <p>
+          These will be my last submissions before the end of Phase 1. I submitted a combination of
+          some ensemble models with weights guided by the plot above and single model predictions for
+          Macau and TabPFN. The ensembles I submitted were:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Weights (cp · ch · rf · xg · mc · tf)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>4_ens_cp4_ch5_rf0_xg1_mc0_tf5_submission.csv</code></td>
+              <td>4 · 5 · 0 · 1 · 0 · 5</td>
+            </tr>
+            <tr>
+              <td><code>4_ens_cp4_ch5_rf0_xg1_mc1_tf5_submission.csv</code></td>
+              <td>4 · 5 · 0 · 1 · 1 · 5</td>
+            </tr>
+            <tr>
+              <td><code>4_ens_cp5_ch5_rf0_xg13_mc1_tf5_submission.csv</code></td>
+              <td>5 · 5 · 0 · ⅓ · 1 · 5</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          Below I show the performance and compare it to the previous submissions from
+          <a href="2026_05_01_ml_optimization.html">notebook #3</a>:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Set</th>
+              <th>MAE</th>
+              <th>R²</th>
+              <th>ρ</th>
+              <th>Ranking</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>CheMeleon only</td><td>0.574</td><td>0.336</td><td>0.708</td><td>109 of 155</td></tr>
+            <tr><td><code>rf0_cp1_ch2</code></td><td>0.521</td><td>0.430</td><td>0.750</td><td>65 of 156</td></tr>
+            <tr><td><code>rf1_cp1_ch2</code></td><td>0.515</td><td>0.454</td><td>0.754</td><td>61 of 156</td></tr>
+            <tr><td><code>rf1_cp2_ch2</code></td><td>0.507</td><td>0.473</td><td>—</td><td>51 of 156</td></tr>
+            <tr><td><code>rf0_cp1_ch1</code></td><td>0.503</td><td>0.463</td><td>0.770</td><td>50 of 159 (now 77 of 241)</td></tr>
+            <tr><td>TabPFN</td><td>0.528</td><td>0.474</td><td>0.730</td><td>118 of 242</td></tr>
+            <tr><td>Macau</td><td>0.533</td><td>0.488</td><td>0.736</td><td>124 of 243</td></tr>
+            <tr><td><code>cp4_ch5_rf0_xg1_mc1_tf5</code></td><td>0.497</td><td>0.491</td><td>0.779</td><td>74 of 245</td></tr>
+            <tr><td><code>cp4_ch5_rf0_xg1_mc0_tf5</code></td><td>0.498</td><td>0.487</td><td>0.778</td><td>78 of 248</td></tr>
+            <tr><td><code>cp5_ch5_rf0_xg13_mc1_tf5</code></td><td>0.495</td><td>0.491</td><td>0.780</td><td>78 of 252</td></tr>
+          </tbody>
+        </table>
+
+        <p>
+          Overall, I am still (at the time of submission) within the top third of the ranking, which
+          I am happy with. It was interesting to see that both Macau and TabPFN improved over the
+          baseline CheMeleon, but were still worse than all ensembles.
+        </p>
+
+        <h3>Next Steps</h3>
+
+        <p>
+          After the organizers release the first set of blind data, the next one or two notebooks
+          will focus on the analysis of predictions. I want to understand where each model was making
+          mistakes and if there were consistent mistakes that point toward improvements I can make
+          when treating the data. One example I want to focus on in detail is whether test compounds
+          that were most similar to a train compound that is involved in activity cliffs in the
+          training set were predicted worse than average. If you reached here, thank you for reading
+          to the end. If you have suggestions you want me to look at, feel free to leave a comment
+          below.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../blog.html">← Back to blog</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
