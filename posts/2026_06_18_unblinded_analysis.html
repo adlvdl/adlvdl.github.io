@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #5: Unblinding the Phase 1 test set — delavega.ai</title>
+  <meta name="description" content="The OpenADMET PXR Phase 1 test set is unblinded: a final model ranking, the regression-to-the-mean bias every model shares, and the activity cliffs behind the largest prediction errors.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-06-18</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #5: Unblinding the Phase 1 test set</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          Phase 1 of the PXR challenge has closed, and the organizers have released the ground-truth
+          labels for the analog set 1 test compounds. For the first time I can stop staring at a
+          single leaderboard number and actually focus in more detail: where did the models do well
+          and where did they fail?
+        </p>
+        <p>
+          At the end of <a href="2026_05_21_ml_optimization_2.html">the previous post</a> I promised
+          one specific question — whether test compounds that sit close to training-set activity
+          cliffs are predicted worse than average. The short answer is yes, and this notebook
+          quantifies it, along with a few things I did not expect.
+        </p>
+        <p>In this post I will cover:</p>
+        <ul>
+          <li>how the unblinded test set compares to the training data, and how few genuine hits it actually contains</li>
+          <li>a final, honest ranking of the six prediction sources now that the labels are known</li>
+          <li>a systematic bias that <em>every</em> model shares</li>
+          <li>activity cliffs, by nearest-neighbor and by matched molecular pair, and a direct test of the cliff hypothesis</li>
+          <li>which compounds break every model at once, and whether the ensemble can rescue them</li>
+        </ul>
+        <p>
+          As always, the
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/5_unblinded_analysis.py" target="_blank" rel="noopener">notebook</a>
+          is available, as well as an
+          <a href="../html_notebooks/pxr_challenge/5_unblinded_analysis.html">HTML version</a>
+          to explore the tables and interactive plots in more detail.
+        </p>
+
+        <h3>Part 1 — What the unblinded test set looks like</h3>
+
+        <p>
+          The released file contains 253 compounds with full dose-response parameters: pEC50, Emax,
+          and confidence intervals. Considering these compounds were selected as analogs of highly
+          active compounds in the training set, the first question to look at is: how much has the
+          activity distribution shifted? A quick way to check is to overlay the two pEC50
+          distributions with a kernel density estimate.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/pec50_distribution_train_test.png"
+               alt="Kernel density estimate of the pEC50 distribution for the dose-response training set and the unblinded Phase 1 test set, with the hit threshold marked at pEC50 = 6.">
+          <figcaption>pEC50 distribution for the training set (n ≈ 4,100) and the unblinded test set (n = 253). The two overlap closely, while good for ML it is surprising the distribution was not shifted further.</figcaption>
+        </figure>
+
+        <p>
+          The good news for ML models is that the distributions sit almost on top of each other, so
+          the distributions of the training and test set are similar. However, this is unexpected. I
+          would have expected a larger shift to higher pEC50 values. The test set is dominated by
+          weak-to-moderate compounds: the median pEC50 is 4.9, about 78% of compounds sit above pEC50
+          4, but only <strong>10 of the 253 compounds (4%)</strong> clear the pEC50 ≥ 6 hit threshold.
+          For a blind virtual screening exercise, I would have said that a hit rate of 4% is very
+          good. But this was a follow-on exercise, and I wonder if the SAR surface for PXR activity is
+          highly discontinuous or the libraries used to select the two analog sets were not large
+          enough.
+        </p>
+
+        <h3>Part 2 — The final ranking</h3>
+
+        <p>
+          With the labels in hand I evaluated the ensemble I submitted at the end of Phase 1
+          (<code>cp5_ch5_rf0_xg13_mc1_tf5</code>, described in
+          <a href="2026_05_21_ml_optimization_2.html">the previous post</a>) together with its five
+          component models. One mistake was that I didn't save the predictions of all individual
+          models I used in the ensemble, so for this analysis I needed to regenerate two models:
+          Chemprop and XGBoost. Because of the stochastic nature of these models, the predictions
+          (and the ensemble they would generate) are not exactly the same, but they are within the
+          third decimal point so I kept the ensemble data I submitted. I computed five standard
+          regression metrics plus the mean signed bias.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>MAE</th>
+              <th>RMSE</th>
+              <th>R²</th>
+              <th>ρ</th>
+              <th>Bias</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Ensemble</strong> (cp·ch·xg·mc·tf)</td>
+              <td><strong>0.495</strong></td>
+              <td>0.735</td>
+              <td>0.493</td>
+              <td><strong>0.784</strong></td>
+              <td>+0.160</td>
+            </tr>
+            <tr>
+              <td>TabPFN / CheMeleon (tf)</td>
+              <td>0.528</td>
+              <td>0.746</td>
+              <td>0.477</td>
+              <td>0.734</td>
+              <td>+0.075</td>
+            </tr>
+            <tr>
+              <td>Macau / CheMeleon (mc)</td>
+              <td>0.533</td>
+              <td>0.736</td>
+              <td>0.491</td>
+              <td>0.739</td>
+              <td>+0.069</td>
+            </tr>
+            <tr>
+              <td>Chemprop HPO (cp)</td>
+              <td>0.553</td>
+              <td>0.758</td>
+              <td>0.461</td>
+              <td>0.750</td>
+              <td>−0.057</td>
+            </tr>
+            <tr>
+              <td>CheMeleon HPO (ch)</td>
+              <td>0.565</td>
+              <td>0.827</td>
+              <td>0.357</td>
+              <td>0.697</td>
+              <td>+0.293</td>
+            </tr>
+            <tr>
+              <td>XGBoost / Mordred (xg)</td>
+              <td>0.603</td>
+              <td>0.803</td>
+              <td>0.394</td>
+              <td>0.699</td>
+              <td>−0.091</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/pred_vs_true_all_models.png"
+               alt="Predicted versus true pEC50 for each of the six prediction sources, points colored by absolute error, sorted by MAE.">
+          <figcaption>Predicted versus true pEC50 for every submission. The dashed diagonal is perfect prediction; redder points are larger mistakes. The ensemble (top-left) is the tightest, but every panel shows the same fan shape — points splaying away from the diagonal at the low and high extremes.</figcaption>
+        </figure>
+
+        <p>
+          The ensemble comes out on top at MAE 0.495 with the best rank correlation (ρ = 0.784). That
+          number is almost identical to the 0.495 I saw on the live leaderboard before the close,
+          which is quietly reassuring: the leaderboard was an honest mirror of the held-out
+          performance, not an artifact of the scoring.
+        </p>
+        <p>
+          The result I want to highlight, though, is <strong>CheMeleon</strong>. CheMeleon was my
+          cross-validation champion from notebook #2 all the way through #4 — the model everything
+          else was measured against. On the unblinded set it performs surprisingly badly: the worst
+          R² of the group (0.357), second-worst MAE, and the largest positive bias (+0.293), meaning
+          it overpredicts more than any other model. The models that generalized best here are the
+          ones that pool diverse signal — the ensemble, and the two newcomers TabPFN and Macau — not
+          the single best cross-validation model. It is a clean reminder that a cross-validation
+          ranking is a hypothesis about prospective performance, not a guarantee of it. This is
+          precisely why the blind challenge is worth the effort.
+        </p>
+
+        <h3>Part 3 — Every model regresses to the mean</h3>
+
+        <p>
+          The fan shape in the scatter plots above is worth pulling apart, because it is the same in
+          all six panels. Plotting the signed residual (predicted − true) against the true pEC50 makes
+          the pattern unmistakable.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/residuals_all_models.png"
+               alt="Residual (predicted minus true pEC50) versus true pEC50 for each model, colored by absolute error.">
+          <figcaption>Residuals versus true pEC50. A flat cloud around zero would be ideal. Instead every model shows a clear downward slope: positive residuals (overprediction) at low true pEC50, negative residuals (underprediction) at high true pEC50.</figcaption>
+        </figure>
+
+        <p>
+          Every model overpredicts inactive compounds and underpredicts active ones. This is textbook
+          regression to the mean — the models hedge toward the center of the training distribution
+          rather than commit to the extremes. To quantify it I binned the compounds into four activity
+          ranges and computed the mean signed error per model per bin. A heatmap is the most compact
+          way to show conditional bias like this, because it exposes exactly the structure that a
+          single overall MAE or R² hides.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/bias_heatmap.png"
+               alt="Heatmap of mean signed prediction error for each model across four pEC50 activity bins.">
+          <figcaption>Mean signed error per model and activity bin (red = overprediction, blue = underprediction). The annotation in each cell shows the mean error and the number of compounds in that bin. The left column (inactive) is uniformly red; the right column (hit zone) is uniformly blue.</figcaption>
+        </figure>
+
+        <p>
+          The numbers are stark. In the inactive bin (pEC50 &lt; 4, n = 55) every model overpredicts
+          by between +0.8 and +1.2 log units. In the hit zone (pEC50 &gt; 6, n = 10) every model
+          underpredicts, by as much as −1.0 for Chemprop and XGBoost. Read together with Part 1, this
+          is the most consequential failure in the whole analysis: the handful of genuinely potent
+          inducers — the compounds a screening campaign exists to find — are systematically called
+          <em>less</em> active than they really are. A model can look perfectly respectable on
+          aggregate MAE and still be dangerous in the one region where a decision actually gets made.
+        </p>
+
+        <h3>Part 4 — Activity cliffs: similar structures, different potency</h3>
+
+        <p>
+          So why do the models hedge? A large part of the answer is activity cliffs. An activity cliff
+          is a pair of structurally similar compounds with substantially different potency, where the
+          similarity-property principle that is assumed in QSAR breaks down. They are notoriously hard
+          for ML models, because the model sees two near-identical inputs and has no way to know they
+          should map to very different outputs. This test set, by design, is built from analog series
+          rather than diverse screening hits (a point the organizers made from
+          <a href="2026_03_26_pxr_challenge.html">the start</a>), so it is exactly the regime where
+          cliffs proliferate.
+        </p>
+        <p>
+          I looked at this two ways. First, for each test compound I found its nearest neighbor in the
+          dose-response training set by ECFP4 Tanimoto similarity. The structural coverage is
+          excellent: <strong>247 of 253 compounds (97.6%)</strong> have a training neighbor at
+          Tanimoto ≥ 0.4, with a median similarity of 0.53. So the test compounds are <em>not</em>
+          structurally novel — the models had close analogs to learn from. And yet
+          <strong>117 of 253 (46%)</strong> are activity cliffs: similar to their nearest training
+          neighbor but differing by at least 1 pEC50 unit. The difficulty here is not novelty; it is
+          cliffs.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/activity_cliffs_scatter.png"
+               alt="Scatter of each test compound's nearest-neighbor Tanimoto similarity against the absolute pEC50 difference, colored by the ensemble residual.">
+          <figcaption>Each point is a test compound, placed by its similarity to its nearest training neighbor (x) and the potency gap to that neighbor (y). Triangles above the dashed line are activity cliffs. Color is the ensemble residual: the cliffs are overwhelmingly red — overpredicted.</figcaption>
+        </figure>
+
+        <p>
+          This is the direct test of the hypothesis I left open in notebook #4, and it confirms it
+          cleanly. The 117 cliff compounds have a mean ensemble absolute error of <strong>0.644</strong>,
+          against <strong>0.335</strong> for the concordant compounds — nearly double the error. More
+          telling is the sign: the cliffs are overpredicted by +0.47 on average. That is exactly what
+          the regression-to-the-mean story predicts. When a test compound is much <em>less</em> active
+          than its closest training analog, the model leans on the analog it knows and predicts a
+          potency that is too high. The cliff is invisible to the model, so it falls off the edge of
+          it.
+        </p>
+        <p>
+          A nearest-neighbor fingerprint comparison is a blunt instrument, though, so I cross-checked
+          with matched molecular pairs (MMP). An MMP differs by exactly one structural transformation
+          on a shared scaffold, which lets us attribute a potency change to a specific chemical edit
+          rather than to vague whole-molecule similarity.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/mmp_activity_cliffs.png"
+               alt="Left: distribution of the absolute pEC50 difference across all cross-set matched molecular pairs. Right: the top 20 scaffold clusters ranked by their maximum potency gap, colored by the fraction of pairs that are cliffs.">
+          <figcaption>Cross-set matched molecular pairs (one training compound, one test compound). Of 399 pairs, 35% are activity cliffs, and the right-hand panel shows that many scaffold clusters are entirely cliff — the same single-point edit flips potency by more than a log unit every time it appears.</figcaption>
+        </figure>
+
+        <p>
+          The MMP view agrees with the nearest-neighbor view: of 399 cross-set pairs,
+          <strong>139 (35%) are cliffs</strong>, and 53 of 123 scaffold clusters contain at least one.
+          The median potency gap is a modest 0.79 log units, but the tail is long — the 95th
+          percentile is 3.3 and the largest single gap is 4.45. Both analyses point at the same
+          conclusion: this is a cliff-rich, SAR-dense test set, and a model that predicts smooth
+          averages over close analogs is structurally mismatched to it.
+        </p>
+
+        <h3>Part 5 — Which compounds break every model</h3>
+
+        <p>
+          The last question is whether the models fail <em>independently</em> — in which case
+          averaging them should cancel a lot of the noise — or whether they fail <em>together</em> on
+          the same hard compounds, which no amount of ensembling can fix.
+        </p>
+        <p>
+          A Venn diagram of six models is unreadable, so the right tool here is an UpSet plot. It
+          shows compounds with absolute error over 1 across the five individual models and the
+          ensemble, marking for each unique compound whether it appears as a bad prediction in one or
+          more of them.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/upset_bad_predictions.png"
+               alt="UpSet plot of the compounds predicted badly (absolute error above 1 pEC50 unit), showing per-model counts and the size of each model intersection.">
+          <figcaption>Model disagreement on badly-predicted compounds. The ensemble has the fewest individual failures (28), but the single largest intersection — 18 compounds — is missed by all six models at once.</figcaption>
+        </figure>
+
+        <p>
+          The ensemble does have the fewest bad predictions (28 compounds, versus 32–40 for the
+          components), so the aggregation is doing something. But the largest intersection in the plot
+          is <strong>18 compounds that every single model gets wrong</strong> — shared blind spots,
+          not independent slip-ups. Those are the compounds no reweighting of the ensemble can
+          recover.
+        </p>
+        <p>
+          To make the ensemble's contribution concrete, I classified each compound by whether the
+          ensemble rescued it.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_18_unblinded_analysis/ensemble_rescue_scatter.png"
+               alt="Scatter of ensemble absolute error against the mean absolute error of the individual component models, with compounds colored by rescue status.">
+          <figcaption>Ensemble error versus the mean component error per compound. Points hugging the diagonal mean the ensemble simply tracks its components. Teal points (rescued) sit below the threshold the components failed; red points (still bad) are failures averaging could not fix.</figcaption>
+        </figure>
+
+        <p>
+          Of the 253 compounds, the ensemble <strong>rescued 32</strong> (bad in at least one
+          component, brought back under the threshold), left <strong>28 still bad</strong>, and
+          predicted <strong>193 well across the board</strong>. Notably, not a single compound was
+          made bad <em>only</em> by the ensemble; at least averaging never actively hurt. But the
+          cloud hugs the diagonal: the ensemble mostly tracks the mean of its components, trimming the
+          borderline misses without working miracles. The 28 that stay bad overlap heavily with the
+          activity cliffs from Part 4 and the sparse hit zone from Part 1.
+        </p>
+
+        <h3>Next steps</h3>
+
+        <p>
+          Phase 2 (the fully blinded analog set 2) closes on July 1, so there is a little time to act
+          on this before the final submission. May and June have been hectic months as I adapt to my
+          new consulting work. But I want to publish one final notebook before the end of the
+          challenge with my final attempts to improve the predictions. Two of the failures above look
+          correctable, and they are where I want to spend that time.
+        </p>
+        <p>
+          The first is dealing with the large errors at the extremes of the activity distribution. One
+          possibility is weighting higher the errors in the loss function during training. The other
+          is a post-hoc calibration: a simple de-shrinking step (regressing the truth on the
+          prediction, or an isotonic fit) should pull the inactive overpredictions down and the
+          hit-zone underpredictions up. Another technique to test is uncertainty estimation so that
+          each pEC50 comes with an honest interval — most valuable precisely in the hit zone, where
+          the bias is worst and the stakes are highest.
+        </p>
+        <p>
+          The second is to do a final attempt to use the other assay data to improve predictions. In
+          addition to the single dose and counter screen data, OpenADMET released an additional set of
+          data. Other participants have mentioned how it was very useful for them, and it is something
+          I have failed at in the previous notebooks.
+        </p>
+        <p>
+          Whether this will improve the predictions in the final blinded set (analog set 2) is an open
+          question. Surprisingly, in the interim leaderboard they published, which used both analog
+          sets, my ensemble performed better than expected. The live leaderboard during Phase 1 was
+          based only on the half that has now been unblinded; the other half was completely hidden. My
+          best submission had an MAE of 0.495 and ranked 78 of 252 (within the top third of the
+          ranking) on the live leaderboard. On the interim leaderboard, my MAE is 0.470 and my rank is
+          83 of 338 (within the top quarter). My models generalized better than I expected, which I am
+          happy with.
+        </p>
+        <p>
+          If you reached the end, thank you for reading. If you have suggestions, especially on the
+          calibration or reweighting ideas, I would be glad to hear them in the comments below.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../index.html">← Home</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="../blog.html">Back to blog →</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
