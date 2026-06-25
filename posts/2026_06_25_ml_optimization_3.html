@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #6: Trying to fix the models (and mostly failing) — delavega.ai</title>
+  <meta name="description" content="Five attempts to fix the regression-to-the-mean bias and label noise in the OpenADMET PXR models — calibration, reweighting, oversampling, extra data and filtering — and an honest account of why most of them barely moved the needle.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-06-25</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #6: Trying to fix the models (and mostly failing)</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          At the end of <a href="2026_06_18_unblinded_analysis.html">the unblinding post</a> I laid
+          out two failure modes the released labels had exposed, and a short list of fixes I wanted to
+          try before the final submission. This notebook is me actually trying them. It is also, I
+          should say up front, the post where most of those fixes do not work.
+        </p>
+        <p>To recap, the two correctable problems were:</p>
+        <ol>
+          <li>
+            <strong>Regression to the mean at the activity extremes.</strong> Every model overpredicts
+            inactive compounds and underpredicts the rare potent ones. In the hit zone (pEC50 &gt; 6)
+            the underprediction reached a full log unit.
+          </li>
+          <li>
+            <strong>Unused auxiliary assay data.</strong> Beyond the dose-response labels, OpenADMET
+            had released extra measurements that other participants found useful, and that I had failed
+            to exploit in earlier notebooks.
+          </li>
+        </ol>
+        <p>
+          I tested five concrete remedies. The notebook orders them by mechanism, but they group more
+          naturally into two questions, and that is how I will present them here:
+        </p>
+        <ul>
+          <li><strong>Fixing the bias</strong>: three ways to push the models to commit to the extremes: post-hoc calibration, loss reweighting, and oversampling.</li>
+          <li><strong>Fixing the data</strong>: two ways to change what the models learn from: adding a small high-quality dataset, and removing unreliable training points.</li>
+        </ul>
+        <p>
+          Then I combine the two interventions that survived into a retrained ensemble and check it
+          against the unblinded labels.
+        </p>
+        <p>
+          <strong>One rule throughout.</strong> Everything is compared with the same
+          <strong>5×5 cross-validation</strong> used since notebook #2 (random split, seed = 42). To
+          avoid letting the now-known Phase 1 labels drive my choices, only the single best strategy
+          chosen <em>by CV</em> is ever applied to the unblinded test set, and its effect there is
+          reported once, for confirmation.
+        </p>
+        <p>
+          As always the
+          <a href="https://github.com/adlvdl/pxr_challenge/blob/main/marimo_notebooks/6_ml_optimization_3.py" target="_blank" rel="noopener">notebook</a>
+          is available, along with an
+          <a href="../html_notebooks/pxr_challenge/6_ml_optimization_3.html">HTML version</a>
+          to explore the tables and plots in more detail.
+        </p>
+
+        <h3>Part 1 — Fixing the bias</h3>
+
+        <p>
+          All three ideas in this section attack the same target: the models hedge toward the dense
+          middle of the training distribution instead of committing to potent or inactive compounds.
+          They differ only in <em>when</em> they intervene: after training, during training, or in the
+          data.
+        </p>
+
+        <h4>Post-hoc calibration (de-shrinking)</h4>
+
+        <p>
+          The cheapest possible fix is a one-dimensional map applied <em>after</em> training that pulls
+          predictions back toward the truth: low predictions lower, high predictions higher. I tested
+          two variants:
+        </p>
+        <ul>
+          <li>a <strong>linear</strong> de-shrink: regress true on predicted pEC50; a fitted slope &gt; 1 expands the range</li>
+          <li>an <strong>isotonic</strong> fit: a flexible monotonic map that can also correct curvature</li>
+        </ul>
+        <p>
+          Because calibration is model-agnostic, I could reuse the out-of-fold 5×5 CV predictions
+          already saved in notebook #4 rather than retraining anything. For each test fold the
+          calibrator is fit on the <em>sibling</em> inner folds of the same outer repeat (a disjoint
+          set of compounds) and then applied to the held-out fold, so the process doesn't use the
+          unblinded data. I ran it for all six component models and for the submitted ensemble
+          (<code>cp5·ch5·rf0·xg⅓·mc1·tf5</code>).
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/calibration_comparison.png"
+               alt="Grouped bar chart of overall MAE, hit-zone MAE, hit-zone bias and inactive bias for raw, linear and isotonic calibration across all models and the ensemble.">
+          <figcaption>Effect of calibration across models. Each group of three bars is raw / linear / isotonic. Overall MAE (top-left) is essentially unchanged; the bias panels (bottom) move toward zero, but only slightly.</figcaption>
+        </figure>
+
+        <p>
+          The honest summary is that calibration barely does anything to overall accuracy. On the
+          ensemble, CV MAE goes from <strong>0.471</strong> raw to <strong>0.471</strong> linear and
+          <strong>0.474</strong> isotonic: a change in the third decimal place. The bias panels do move
+          in the right direction: isotonic trims the inactive overprediction (+0.43 → +0.39) and the
+          hit-zone underprediction (−1.25 → −1.21). But the effect is small, and the reason is
+          structural. The fitted linear slope tells the same story: it came out at
+          <strong>1.024</strong>, barely above 1, because across the dense middle the ensemble is
+          hardly shrinking at all, so there is almost nothing for a global de-shrink to expand.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/calibration_bias_heatmap.png"
+               alt="Heatmap of ensemble mean signed error across four activity bins for raw, linear and isotonic calibration.">
+          <figcaption>Ensemble signed error by activity bin (red = overprediction, blue = underprediction). De-shrinking nudges the outer columns toward zero but cannot remove the structure.</figcaption>
+        </figure>
+
+        <h4>Loss / sample reweighting</h4>
+
+        <p>
+          Calibration acts after the fact; reweighting changes what the model learns by up-weighting
+          extreme-activity compounds during training. I compared three schemes:
+        </p>
+        <ul>
+          <li><code>uniform</code>: baseline</li>
+          <li><code>invdensity</code>: ∝ 1 / population of the label's pEC50 bin</li>
+          <li><code>distance</code>: 1 + |y − median|, growing toward the extremes</li>
+        </ul>
+        <p>
+          Each scheme is tested on the three models that expose a per-sample loss weight:
+          XGBoost·Mordred, RF·CheMeleon, and a scratch Chemprop D-MPNN. (TabPFN and Macau have no loss
+          weight to set, so they sit this one out.)
+        </p>
+        <p>
+          This is where the negative result is starkest. For <strong>every</strong> model, the uniform
+          baseline had the lowest CV MAE; both reweighting schemes made it worse.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>uniform</th>
+              <th>distance</th>
+              <th>invdensity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Chemprop · scratch</td>
+              <td><strong>0.513</strong></td>
+              <td>0.537</td>
+              <td>0.615</td>
+            </tr>
+            <tr>
+              <td>XGBoost · Mordred</td>
+              <td><strong>0.521</strong></td>
+              <td>0.530</td>
+              <td>0.547</td>
+            </tr>
+            <tr>
+              <td>RF · CheMeleon</td>
+              <td><strong>0.590</strong></td>
+              <td>0.596</td>
+              <td>0.606</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/reweighting_bias_heatmap.png"
+               alt="Heatmap of mean signed error by activity bin for the three reweighting schemes, one panel per model.">
+          <figcaption>Reweighting signed error by activity bin. Moving from uniform down to invdensity, the <code>&lt;4</code> and <code>&gt;6</code> columns barely change while the weak/moderate middle drifts away from zero: error is shifted, not removed.</figcaption>
+        </figure>
+
+        <p>
+          The bias heatmap explains why: reweighting <em>redistributes</em> error rather than removing
+          it. Up-weighting the extremes pulls a little bias out of the <code>&gt;6</code> and
+          <code>&lt;4</code> columns, but it pushes bias <em>into</em> the well-populated
+          <code>4–5</code> and <code>5–6</code> bins, which is where most of the compounds live, so the
+          overall MAE rises.
+        </p>
+
+        <h4>Oversampling the extremes</h4>
+
+        <p>
+          Oversampling is the data-level twin of reweighting: instead of weighting the loss, it simply
+          duplicates the rare extreme compounds in the training fold. Its one advantage is reach:
+          because it changes the data and not the loss, it works for <strong>every</strong> model,
+          including TabPFN and Macau. I replicated the active tail (pEC50 &gt; 5.5) and inactive tail
+          (pEC50 &lt; 3.5) by factors of k = 2, 3, 5 and tested four models.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/oversampling_curves.png"
+               alt="Two-panel plot: left, CV MAE versus oversampling factor for four models; right, hit-zone and inactive signed bias versus factor.">
+          <figcaption>Oversampling curves. Left: overall MAE climbs with k for every model. Right: the hit-zone bias (circles) creeps toward zero for the tree and message-passing models, but TabPFN (green) gets worse on both axes.</figcaption>
+        </figure>
+
+        <p>
+          Same shape of result, drawn as a curve: overall MAE rises monotonically with k for all four
+          models. The bias panel is more interesting and more nuanced. For XGBoost, Macau, and
+          Chemprop, oversampling does pull the hit-zone underprediction toward zero (Chemprop's
+          hit-zone bias improves from −0.72 at k = 1 to −0.56 at k = 5), so it <em>is</em> a more
+          effective bias lever than calibration was. But <strong>TabPFN behaves in the opposite
+          way</strong>: its hit-zone bias gets <em>more</em> negative and its inactive bias balloons
+          from +0.56 to +0.96 as k grows. That fits how TabPFN works: it treats the training set as
+          in-context examples, so feeding it many duplicated points distorts the density it conditions
+          on rather than re-weighting a loss. The lesson is that "oversample the extremes" is not a
+          model-agnostic fix even though it is mechanically applicable to every model.
+        </p>
+
+        <h4>Aside</h4>
+
+        <p>
+          For the purpose of this competition, all three interventions failed because they didn't
+          decrease MAE, the metric on which submissions are scored. However, in a drug discovery
+          program, depending on the needs of the program and its success metrics, one or more of these
+          interventions could be worthwhile. MAE is a global metric of model performance, but in most
+          scenarios we care more about specific ranges. For example, for affinity we are normally
+          interested in highly potent compounds. If we bias a model to better predict those compounds,
+          even if the model's MAE is higher, it will be a better model for the program.
+        </p>
+
+        <h3>Part 2 — Fixing the data</h3>
+
+        <p>
+          The first three ideas all left the training labels alone and changed how the model treated
+          them. The next two change the data itself: one adds points, one removes them.
+        </p>
+
+        <h4>Extra assay data (the 96-compound semi-pure set)</h4>
+
+        <p>
+          OpenADMET released a small, additional dataset: 96 compounds re-measured from
+          <strong>semi-pure</strong> microscale synthesis with purity-corrected pEC50 values (94
+          usable, spanning pEC50 4.0–7.0, exactly the moderate-to-hit range where the models struggle).
+          Only <strong>5 of them overlap</strong> the dose-response training set, so they are almost
+          all genuinely new measurements.
+        </p>
+        <p>
+          Before using them as training data, those 5 overlapping compounds are worth a detour, because
+          they let me put a number on the label noise.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/label_noise.png"
+               alt="Scatter of original training pEC50 against corrected semi-pure pEC50 for the five overlapping compounds, annotated with the per-compound difference.">
+          <figcaption>Label-noise audit. For the five compounds measured twice, the corrected value differs from the original training label by 0.18 log units on average: a floor on the error no model can beat.</figcaption>
+        </figure>
+
+        <p>
+          The mean absolute discrepancy between the original and corrected labels is
+          <strong>0.18 log units</strong>. That is a small but real number, and a useful one: the best
+          ensemble CV MAE is ≈ 0.47, so a non-trivial slice of the residual error is simply measurement
+          noise in the labels, not something a better model could ever fix. It is the most valuable
+          thing to come out of this dataset. However, because it is based only on 5 compounds and on
+          different experiments, it should be taken with a grain of salt.
+        </p>
+        <p>
+          As for using the 94 compounds to <em>augment</em> training, they help, but barely, because 94
+          new points is only a ~2% increase over the 4,138-compound dose-response training set.
+          XGBoost·Mordred improves from <strong>0.521</strong> to <strong>0.519</strong>, RF·CheMeleon
+          from <strong>0.590</strong> to <strong>0.586</strong>. Real, in the right direction, and
+          almost too small to care about.
+        </p>
+
+        <h4>Filtering the training set</h4>
+
+        <p>
+          The mirror image of augmentation is to <em>remove</em> likely-unreliable training points and
+          ask whether a cleaner set generalizes better. I tested three filters, each dropping ≈10% of
+          the training fold:
+        </p>
+        <ul>
+          <li><code>counter</code>: drop compounds whose counter-screen pEC50 ≥ their PXR pEC50, i.e. non-selective hits</li>
+          <li><code>cliff</code>: drop the member of each activity-cliff pair whose activity is nearer the mean</li>
+          <li><code>knn</code>: drop the points whose pEC50 deviates most from their five nearest neighbors</li>
+        </ul>
+        <p>
+          The trap with any filtering experiment is that removing data changes performance even when
+          the removal is random, so every filter is paired with a
+          <strong>size-matched random-removal control</strong>. A filter only counts if it beats
+          <em>both</em> the full-data baseline <em>and</em> its random twin.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/filtering_delta_mae.png"
+               alt="Two-panel bar chart of change in MAE versus baseline for each filter and its matched random control, for XGBoost and Macau.">
+          <figcaption>Training-set filtering. A blue bar must be below zero (beat the full-data baseline) AND below its gray twin (the gain is from cleaning, not from less data). Only the <code>counter</code> filter manages both.</figcaption>
+        </figure>
+
+        <p>
+          By that stricter bar, only one filter survives: <strong>counter-screen filtering</strong>.
+          For both models it lowers MAE below the baseline (XGBoost 0.521 → 0.520, Macau 0.535 → 0.531)
+          <em>and</em> beats its random control, whereas <code>cliff</code> and <code>knn</code> are no
+          better (and sometimes worse) than dropping the same number of rows at random. That is
+          mechanistically satisfying: removing compounds whose activity is not PXR-specific takes out
+          genuinely misleading labels, while the cliff and kNN heuristics mostly just throw away
+          informative data. The gain is tiny, but unlike everything in Part 1, it is a real signal and
+          not a redistribution.
+        </p>
+
+        <h3>Part 3 — Putting the survivors together</h3>
+
+        <p>
+          Stepping back, here is the CV-MAE improvement of the best variant of each strategy over its
+          own baseline. Comparing absolute MAE across the rows would be unfair (calibration operates on
+          the strong ensemble while the others operate on weaker single models), so the fair currency is
+          the <em>change</em> each strategy buys.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Strategy (best variant)</th>
+              <th>Model</th>
+              <th>ΔMAE vs own baseline</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Counter-filtering</td>
+              <td>Macau · CheMeleon</td>
+              <td><strong>−0.0044</strong></td>
+            </tr>
+            <tr>
+              <td>+ semi-pure data</td>
+              <td>RF · CheMeleon</td>
+              <td>−0.0036</td>
+            </tr>
+            <tr>
+              <td>+ semi-pure data</td>
+              <td>XGBoost · Mordred</td>
+              <td>−0.0019</td>
+            </tr>
+            <tr>
+              <td>Counter-filtering</td>
+              <td>XGBoost · Mordred</td>
+              <td>−0.0008</td>
+            </tr>
+            <tr>
+              <td>Calibration (linear)</td>
+              <td>Ensemble</td>
+              <td>−0.0001</td>
+            </tr>
+            <tr>
+              <td>Reweighting / oversampling</td>
+              <td>(all models)</td>
+              <td>0.000 or worse</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          Two things stand out. First, the largest improvement <em>anything</em> produced was −0.0044
+          MAE, from counter-filtering; and that was on a single component model weaker than the
+          ensemble, so it is not directly something I can ship. Second, the only intervention that
+          operates <em>directly</em> on the submitted ensemble is calibration, and its best CV variant
+          (linear) buys −0.0001, which is to say, nothing. So the strategy applied to the submission,
+          honoring the CV-only rule, is the best-by-CV calibration; and the best-by-CV calibration is
+          "barely distinguishable from doing nothing."
+        </p>
+        <p>
+          The two data-level survivors (counter-filtering and the semi-pure augmentation) only pay off
+          if I <em>rebuild</em> the whole ensemble on the cleaned, augmented data. So that is the last
+          experiment: retrain all five components on the counter-filtered + semi-pure-augmented training
+          set, re-weight them with the original mixture, and evaluate on the unblinded labels.
+        </p>
+        <p>
+          First, the calibration question on the held-out set, since it is the one move I could make to
+          the existing submission:
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_06_25_ml_optimization_3/unblinded_calibration.png"
+               alt="Three scatter panels of predicted versus true pEC50 on the unblinded test set: raw ensemble, linear de-shrink, isotonic.">
+          <figcaption>Calibration on the unblinded test set. The decision-relevant question is the hit zone (above the dotted line): isotonic pulls the worst underpredictions up a little, at a hair's cost to overall MAE.</figcaption>
+        </figure>
+
+        <p>
+          On the unblinded set the raw ensemble scores MAE <strong>0.4948</strong>. Linear de-shrink
+          nudges it to <strong>0.4936</strong>; isotonic moves overall MAE the wrong way to
+          <strong>0.4957</strong> but does the most for the hit zone, lifting its underprediction bias
+          from −0.65 to −0.61. These are all within noise of each other, consistent with what the CV
+          predicted, and a reminder that a global calibration was never going to rescue an
+          activity-conditional bias.
+        </p>
+        <p>
+          The retrained ensemble does slightly better, and it is the one genuine (if modest) win in the
+          whole notebook:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Ensemble</th>
+              <th>MAE</th>
+              <th>R²</th>
+              <th>ρ</th>
+              <th>Hit-zone bias</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Original (notebook #4 submission)</td>
+              <td>0.4948</td>
+              <td>0.493</td>
+              <td>0.784</td>
+              <td>−0.650</td>
+            </tr>
+            <tr>
+              <td><strong>Counter-filtered + semi-pure (default params)</strong></td>
+              <td><strong>0.4916</strong></td>
+              <td><strong>0.497</strong></td>
+              <td><strong>0.786</strong></td>
+              <td><strong>−0.601</strong></td>
+            </tr>
+            <tr>
+              <td>Counter-filtered + semi-pure (HPO params)</td>
+              <td>0.4955</td>
+              <td>0.476</td>
+              <td>0.783</td>
+              <td>−0.614</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          Retraining the default-parameter ensemble on the cleaned and augmented data improves MAE from
+          <strong>0.4948 to 0.4916</strong>, with a small bump in R² and rank correlation and a
+          slightly less severe hit-zone underprediction. Curiously, the HPO-tuned variant is
+          <em>worse</em> than the default one here: the hyperparameters tuned on the original training
+          set do not transfer cleanly to the modified one, which is its own small cautionary tale. The
+          improvement is about 0.003 MAE. It is real, it survived to the held-out set, and it is roughly
+          the size of the label noise I measured earlier, which is about as much as I should have
+          expected.
+        </p>
+
+        <h3>What I take from this</h3>
+
+        <p>
+          The headline is a negative result, and I think it is an honest and useful one. Of five
+          plausible fixes, three (calibration, reweighting, oversampling) failed to improve overall
+          accuracy, and two (extra data, filtering) helped only marginally. But the <em>reasons</em>
+          they failed are the interesting part:
+        </p>
+        <ul>
+          <li>The regression-to-the-mean bias is <strong>conditional on activity</strong>, so a single global calibration map (the obvious first thing to reach for) is structurally unable to remove it.</li>
+          <li>Reweighting and oversampling do not remove error, they <strong>relocate</strong> it from the dense middle to the sparse extremes; whether that trade is worth making is a question about the use case, not the MAE.</li>
+          <li>Oversampling is <strong>not model-agnostic</strong> even when it is mechanically applicable: TabPFN got worse because duplicating points corrupts the very thing an in-context model conditions on.</li>
+          <li>A real chunk of the residual error is <strong>irreducible label noise</strong> (~0.18 log units), which no amount of modeling can touch.</li>
+          <li>The one data intervention that beat its random control (dropping non-PXR-specific hits) worked because it removed genuinely <strong>misleading</strong> labels rather than merely shrinking the training set.</li>
+        </ul>
+        <p>
+          This is the <strong>last notebook I will spend trying to improve the submission</strong>. The
+          competition closes on July 1, so my predictions are now locked. I expect to write at least one
+          more notebook once those final labels are released, focused on analyzing how the models
+          actually did on analog set 2, the half I never got to see. Further out, I plan to write a
+          proper retrospective on the whole PXR challenge: what worked, what I would do differently, and
+          whether the blind format changed any of my conclusions.
+        </p>
+        <p>
+          If you reached the end, thank you for following this series as far as you have. If you have a
+          fix I should have tried, especially anything that targets the activity-conditional bias more
+          cleverly than a global map, I would genuinely like to hear it in the comments below.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../index.html">← Home</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="../blog.html">Back to blog →</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
