@@ -101,7 +101,8 @@ The script sets `data-theme` on `<html>` and also applies `backgroundColor` dire
 - Blog index: `blog.html` — list newest-first, each entry: date (mono) · title (link) · topic tag (mono, `--ice` in dark / `--accent-2` in light)
 - Individual posts: `posts/YYYY_MM_DD_slug.html`
 - **Latest post strip on homepage is hardcoded** — update it manually when a new post is added
-- Also update the blog list entry in `blog.html` and the blog posts section in `publications.html`
+- Publishing a new post means updating exactly two files: the entry list in `blog.html` (newest first) and the latest-post strip in `index.html`
+- **Do not update `publications.html`** — its "Blog posts" section is a hand-picked selection of standalone technical pieces, not an index of the blog. Only add to it when explicitly asked
 - The language in the blog is American English, the tone is first person and scientific
 
 ### Comments block (Giscus)

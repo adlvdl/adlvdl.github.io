@@ -10,6 +10,7 @@ The organizers have released the labels for analog set 2, the 260 compounds of P
 I finished at rank 46.
 
 This post is the post-mortem, and it turned out less flattering than I expected when I started writing it.
+At the end of [notebook #6](2026_06_25_ml_optimization_3.html) I had to choose between three ensembles, used the Phase 1 labels to decide, and picked the worst of the three — a mistake that cost me five places on the final leaderboard.
 
 In this post I will cover:
 - how the Phase 2 test set differs from Phase 1
@@ -26,7 +27,7 @@ As always, the code of the [notebook](https://github.com/adlvdl/pxr_challenge/bl
 
 The first thing to check is whether the two test sets probe the same chemistry.
 In [the Phase 1 post](2026_06_18_unblinded_analysis.html) I was surprised that the unblinded test set sat almost exactly on top of the training distribution, when I had expected an analog set to be enriched for potency.
-Phase 2 moves the needle further compared to Phase 1.
+Phase 2 does shift in that direction, more so than Phase 1 did.
 
 ![Kernel density estimates of the pEC50 distribution for the training set, the Phase 1 unblinded test set and the Phase 2 unblinded test set, with the hit threshold marked at pEC50 = 6.](../images/posts/2026_07_30_unblinded_phase2_analysis/pec50_distribution_train_p1_p2.png)
 *pEC50 distributions for the training set (n = 4,138), Phase 1 (n = 253) and Phase 2 (n = 260). The Phase 2 curve is shifted to the right and has more mass past the dashed hit threshold.*
@@ -41,11 +42,11 @@ The shift is small in the median but larger in the tail.
 | Hits (pEC50 ≥ 6) | 1.6% | 4.0% | **8.1%** |
 
 The hit fraction doubles from Phase 1 to Phase 2, and it is five times the training rate.
-The activity distribution in Phase 2 is also a bit narrower than the training set (std 0.94 against 1.12), so the compounds are packed more tightly around a higher center.
+The activity distribution in Phase 2 is also a bit narrower than the training one (std 0.94 against 1.12), so the compounds are packed more tightly around a higher center.
 This is closer to what I expected an analog follow-up set to look like back in June.
 
 The activity cliffs are the more important part.
-Using the nearest-neighbor definition I have used since before — a test compound within ECFP4 Tanimoto 0.4 of a training compound, but differing by at least 1 log unit in potency — Phase 2 looks only slightly worse than Phase 1, with 127 of 260 compounds (48.8%) classified as cliffs against 46.2% in Phase 1.
+Using the same nearest-neighbor definition as in previous notebooks — a test compound within ECFP4 Tanimoto 0.4 of a training compound, but differing by at least 1 log unit in potency — Phase 2 looks only slightly worse than Phase 1, with 127 of 260 compounds (48.8%) classified as cliffs against 46.2% in Phase 1.
 Structural coverage is essentially complete: 99.2% of Phase 2 compounds have a close training analog.
 
 The matched molecular pair (MMP) view is much less reassuring.
@@ -66,9 +67,8 @@ At the same time, as we will see later, performance on Phase 2 was generally bet
 
 ## Part 2 — The final ranking
 
-
-I analyzed all seventeen submissions generated in previous notebooks, taking the 260 Phase 2 compounds and scoring them against the truth.
-For reference I also scored one external submission from another participant (Gashaw) that he made available in his [repository](https://github.com/gashawmg/openadmet-pxr-pec50-challenge#repo-contents).
+I analyzed all seventeen submissions generated in previous notebooks, slicing each one to the 260 Phase 2 compounds and scoring it against the truth.
+For reference I also scored one external submission from another participant (Gashaw), made available in their [repository](https://github.com/gashawmg/openadmet-pxr-pec50-challenge#repo-contents).
 It finished at rank 12; the file is named `rank9_...` because it sat at rank 9 when I downloaded it, before late submissions were included in the leaderboard.
 
 | Rank | Submission | MAE | RMSE | R² | ρ | Bias |
@@ -100,7 +100,7 @@ Two things in that table caught my attention.
 The first is what sits at the top.
 `6_ensemble_calibrated_linear` is the linearly calibrated ensemble, which is the intervention I spent a third of notebook #6 on and then dismissed, because in cross-validation it improved MAE by 0.0001.
 I wrote at the time that it was "barely distinguishable from doing nothing".
-But in Phase 2 data, it was my best submission.
+But on the Phase 2 data, it turned out to be my best submission.
 
 The second is where the first model I ever trained ended up.
 `2_ml_baseline_chemeleon_test` at position 14 is the off-the-shelf CheMeleon from [notebook #2](2026_04_22_ml_baseline.html), with default settings and no tuning at all.
@@ -158,15 +158,16 @@ For each iteration you compute both MAEs and their difference Δ, which gives a 
 Since I am making all 136 pairwise comparisons among my 17 submissions at once, the p-values then need a **Holm-Bonferroni** step-down correction for multiple testing.
 
 Before applying any of this to my own submissions, I wanted to check that my implementation was correct.
-OpenADMET provide a head-to-head comparison app on the challenge page that runs this test between any two participants, so I could use it as a control: I reproduced the comparison between the external Gashaw blend and my own final submission, and checked my numbers against the ones the app reports.
+OpenADMET provides a head-to-head comparison app on the challenge page that runs this test between any two participants, so I could use it as a control: I reproduced the comparison between the external Gashaw blend and my own final submission, and checked my numbers against the ones the app reports.
 
 ![Histogram of the bootstrap distribution of the MAE difference between the external blend and my final submission.](../images/posts/2026_07_30_unblinded_phase2_analysis/head_to_head_delta_distribution.png)
 *Paired bootstrap of ΔMAE between the external blend and my final submission. The distribution sits almost entirely below zero, so the external model really is better on this set, but the difference does not clear the corrected threshold.*
 
 My implementation gives p = 0.0260 with a 95% CI of [−0.066, −0.007], which matches what the app reports for that pair.
 The correction matters a lot here: the challenge had 95 participants, which means 4,465 pairwise comparisons, and at this pair's position in the sorted p-values the Holm-Bonferroni threshold works out to 0.000025.
-So even a model 0.035 MAE better than mine, from someone who finished 34 places above me, is not statistically distinguishable from mine on 260 compounds.
-The organizers later changed the correction performed to not be as strict and that pushed my submission from Tier 1 to Tier 2.
+So under this correction even a model 0.035 MAE better than mine, from someone who finished 34 places above me, is not statistically distinguishable from mine on 260 compounds.
+The organizers later relaxed the correction, and that moved my submission from Tier 1 to Tier 2 in their own grouping of the leaderboard.
+The analysis below keeps the stricter version, so the tiers I discuss are my own and do not line up with theirs.
 
 With that checked, I anchored the analysis on the submission I actually sent and asked which of the others are significantly different from it.
 
@@ -203,7 +204,7 @@ Neither of them survives the correction.
 
 ---
 
-## Part 5 — What does separate, and what the errors look like
+## Part 5 — Performance on Phase 2 compared with Phase 1
 
 None of this means every model is equally good, and it is worth being precise about what the analysis does and does not show.
 
@@ -271,7 +272,7 @@ A model that predicts an honest interval instead of a point estimate, or one bui
 This closes the analysis of the challenge itself.
 My predictions are locked, all the labels are public, and there is nothing left to compute against them.
 
-I still plan to write the retrospective I promised at the end of the previous post, stepping back from the numbers to what the blind format itself taught me. This post has provided most of the uncomfortable material for it.
+I still plan to write the retrospective I promised at the end of [the previous post](2026_06_25_ml_optimization_3.html), stepping back from the numbers to what the blind format itself taught me. This post has provided most of the uncomfortable material for it.
 
 If you reached the end, thank you for following this series through all seven notebooks.
 The question I would most like to hear opinions on is whether there is a model-selection procedure that would have done better than what I did, given a test set this small and this cliff-dense.
