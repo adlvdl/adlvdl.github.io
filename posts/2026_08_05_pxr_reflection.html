@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PXR Challenge #8: Closing the series — delavega.ai</title>
+  <meta name="description" content="Closing out the OpenADMET PXR blind challenge: what worked and what didn't in the optimization, the paths I never took, how my use of Claude Code evolved, and what documenting the whole thing did for an independent consulting practice.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-08-05</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>PXR Challenge #8: Closing the series</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          Eight blog posts, seven notebooks, around 28,000 lines of marimo notebook code and one
+          webinar presentation later, this post closes out my participation in the OpenADMET PXR
+          Blind Challenge. I finished at rank 46 of 103 participants. That is behind the state of
+          the art at Tier 2, but not embarrassingly off base.
+        </p>
+
+        <p>Going back to what I wrote in <a href="2026_03_26_pxr_challenge.html">the first post</a>:</p>
+
+        <blockquote>
+          <p>
+            I also want my work to be useful beyond the final ranking. Each step — data analysis,
+            model selection, split strategy, prospective evaluation — will be documented openly.
+            The goal is to create a worked example of how to approach a real ML problem in drug
+            discovery. I hope it can be an educational resource.
+          </p>
+        </blockquote>
+
+        <p>
+          I think that is where most of the value of my participation ended up, rather than in the
+          ranking itself. The
+          <a href="2026_07_30_unblinded_phase2_analysis.html">previous post</a> already delivered
+          the uncomfortable statistical verdict: sixteen of my seventeen submissions were
+          indistinguishable from each other on 260 compounds. This post steps back from the numbers
+          to the things that analysis cannot measure.
+        </p>
+
+        <p>I want to cover:</p>
+        <ul>
+          <li>a summary of the optimization process: what seemed to work and what didn't</li>
+          <li>the paths not taken: what I could have done but didn't</li>
+          <li>how my use of Claude Code evolved over the challenge</li>
+          <li>what the challenge did for my visibility as an independent consultant</li>
+          <li>the next challenge</li>
+        </ul>
+
+        <h3>Part 1 — What worked and what didn't</h3>
+
+        <p>
+          The caveat from the previous post applies to everything in this section: most of my
+          submissions sat within the uncertainty band of the one I sent. With that said, two things
+          stand out.
+        </p>
+
+        <p>
+          <strong>Ensembling.</strong> The improvement over the best single model was never dramatic,
+          but the post-hoc analysis showed that ensembling reduces the number of badly wrong
+          predictions, as long as the component models are not all wrong on the same compounds. The
+          ensemble had the lowest count of compounds with an error greater than 1 log unit of any
+          individual model. That is a different kind of benefit from a lower mean error: averaging
+          does not make the typical prediction much better, it makes the catastrophic prediction
+          rarer.
+        </p>
+
+        <p>
+          <strong>Hyperparameter optimization</strong>, but unevenly. It mattered most for the tree
+          ensembles, where XGBoost went from a baseline around 0.64 MAE to 0.52 in the 5×5 CV,
+          combining the choice of fingerprint with the tuned hyperparameters. The neural models
+          barely moved: Chemprop stayed close to its 0.51 baseline no matter what I did to it. The
+          lesson I take is that the return on HPO depends heavily on the model class, and that the
+          <a href="2026_05_15_mps_issues.html">time I spent</a> tuning a D-MPNN would have been
+          better spent elsewhere.
+        </p>
+
+        <p>What did not work:</p>
+
+        <p>
+          <strong>Pretraining and multitask training.</strong> Almost every time I added the
+          single-dose or counter-screen data inside the 5×5 CV, whether as an auxiliary task or as
+          pretraining for Chemprop, performance got worse. This is the failure I find most annoying,
+          because the additional data was clearly informative (most of the top teams used it) and I
+          never found a way to let a model benefit from it.
+        </p>
+
+        <h3>Part 2 — The paths not taken</h3>
+
+        <p>
+          Every project with a deadline works the same way: you list what you could do, you rank it,
+          and the bottom of the list never gets done. Then there are the things that never made the
+          list at all. Based on what the top-performing teams have described, two of those would
+          likely have improved my model.
+        </p>
+
+        <p>
+          <strong>Better use of the additional data.</strong> This has two tracks. The first is the
+          competition data itself. I tried repeatedly to use the single-dose and counter-screen
+          measurements and mostly failed; in the final submission the single-dose data is not used at
+          all, and the counter-screen data only serves to filter non-selective compounds out of the
+          training set. I still believe there was a way to make that data work, and I am keen to see
+          the OpenADMET seminars from the top teams to find out what it was. The second track is
+          public PXR data, which I never touched. It would have been noisy, and I doubt that simply
+          concatenating it with the competition data would have helped. However, as an auxiliary task
+          in a multitask setup, or as a way to calibrate and filter training compounds, it might
+          have. And one plain oversight: I could have added the Phase 1 labels to the training data
+          for the final ensemble once they were released, and it simply never occurred to me until
+          the challenge was over.
+        </p>
+
+        <p>
+          <strong>Use of 3D information.</strong> In the recent webinar, OpenADMET previewed a table
+          showing that most of the top ten participants used 3D information of some kind, from
+          docking or cofolding. This was more natural for teams also entering the structure
+          prediction track, which I was not. It is something I did not prioritize, but it seems to
+          have been genuinely useful in the final modeling stage.
+        </p>
+
+        <h3>Part 3 — Claude Code</h3>
+
+        <p>
+          This was my first substantial cheminformatics project using Claude Code. At the outset I
+          wrote that "the analysis decisions are mine but I will use Claude Code as a development
+          tool," and early on I held to that very literally. I went cell by cell, describing exactly
+          what I wanted in each one and checking that it ran before moving on.
+        </p>
+
+        <p>
+          As I got more experience with the tool, I became less afraid to let it set up large chunks
+          of code. For code generation it is genuinely excellent, and it makes standing up an
+          analysis fast. It is also very good at fighting through Python packaging problems,
+          <em>cough</em> openbabel <em>cough</em>.
+        </p>
+
+        <p>
+          By the end I was comfortable describing the analysis I wanted rather than micromanaging the
+          implementation. It also began contributing ideas worth keeping. In the
+          <a href="2026_06_25_ml_optimization_3.html"><code>ml_optimization_3</code></a> notebook I
+          wanted to reduce the bias at the extremes of the activity distribution, and I asked for two
+          experiments on the usual 5×5 CV: oversampling in the extremes, and sample weighting during
+          training. I added that it could propose other approaches to the same goal, and it suggested
+          the post-hoc calibration. As the Phase 2 analysis later showed, that calibration produced
+          the best submission I never sent.
+        </p>
+
+        <p>
+          I also use it for a language pass on posts before publishing, checking typos and
+          consistency (capitalization of method names, American versus British spelling). It is very
+          reliable at that. Getting a useful <em>first draft</em> out of it was a slower story. The
+          first few attempts were close to worthless and I rewrote them completely. As the series grew
+          and there were more of my own posts for it to read first, the drafts moved closer to how I
+          actually write. They still need a careful pass end to end, but for the last two posts the
+          draft was a real starting point rather than something to discard.
+        </p>
+
+        <p>
+          The honest summary is that Claude Code let me get through more analysis than I would have
+          managed without it, especially in the later part of the challenge once my first consulting
+          contract had started. But it was not driving the analysis. The decisions that determined my
+          ranking (which models to try, how to split the data, which submission to send) were all
+          mine. That said, LLMs are getting better at working through an optimization problem like
+          this one. For an interesting talk on using LLM agents to guide the design of experiments and
+          submissions in a similar challenge, see the
+          <a href="https://www.youtube.com/watch?v=tZeOPcRse8M" target="_blank" rel="noopener">presentation</a>
+          by Prof. Anthony Gitter for the ExpansionRx challenge.
+        </p>
+
+        <h3>Part 4 — What the challenge did for the consultancy</h3>
+
+        <p>
+          When the challenge was announced I had recently gone independent and had not yet started my
+          first contract, so I had a lot of free time. I joined partly for the modeling challenge and
+          partly because I expected it to generate material for LinkedIn and raise my visibility. It
+          did.
+        </p>
+
+        <p>
+          The website analytics tell a consistent story: LinkedIn is by far the largest driver of
+          traffic, and the blog accounts for more than half of all page visits. The posts also drew
+          comments and direct messages, and that exposure led to an invitation to the first webinar
+          OpenADMET organized for the PXR challenge. My presentation there is a short summary of the
+          whole blog series, and you can watch it on
+          <a href="https://www.youtube.com/watch?v=RZyPo_ETHJ0" target="_blank" rel="noopener">YouTube</a>.
+        </p>
+
+        <p>
+          The repository saw a smaller but real amount of reuse, with a couple of forks and a star.
+          Modest numbers, but the repo was always meant as a worked example rather than a library.
+          For the goal I actually set (content and exposure while building a consulting practice) the
+          challenge delivered.
+        </p>
+
+        <h3>Part 5 — The next challenge</h3>
+
+        <p>
+          OpenADMET has announced its next
+          <a href="https://openadmet.ghost.io/announcing-openadmets-cyp-inhibition-blind-challenge/" target="_blank" rel="noopener">blind challenge</a>,
+          on CYP inhibition. It starts on August 17, just before I go on holiday.
+        </p>
+
+        <p>
+          I plan to take part, and the repository will again be public, but I will not document it at
+          the level of detail I managed for PXR. I have much less free time than I did in March, and
+          keeping up with both the competition and the blog was already difficult after my first
+          consulting contract started. My plan is a post covering the work done before the
+          intermediate leaderboard is calculated (September 24), and another at the end of the
+          challenge (November 3). The notebooks should still be informative on their own, and they
+          will be committed and pushed as I work through them.
+        </p>
+
+        <p>
+          There is one thing I want to carry over. The most useful result of the PXR challenge was
+          learning that most of the differences I was optimizing were smaller than the uncertainty of
+          the evaluation. For the new challenge I plan to pay close attention to the confidence
+          intervals around the numbers I compute, so I can tell which improvements are worth chasing.
+          How best to do that before the labels are known is something I will have to work out as I
+          go.
+        </p>
+
+        <p>
+          Thank you to everyone who followed this series through all the blog posts, and to the
+          OpenADMET team for running such a transparent challenge.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../index.html">← Home</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="../blog.html">Back to blog →</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
