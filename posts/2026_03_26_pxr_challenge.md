@@ -5,7 +5,7 @@
 ---
 
 The [OpenADMET group](https://openadmet.ghost.io) has announced a new blind challenge: predicting human Pregnane X Receptor (hPXR) induction. 
-PXR is a nuclear receptor that, when activated, upregulates drug-metabolising enzymes — most notably CYP3A4. 
+PXR is a nuclear receptor that, when activated, upregulates drug-metabolizing enzymes — most notably CYP3A4. 
 A compound that induces PXR can reduce the plasma concentration of co-administered drugs, cause adverse interactions, and derail a project that was otherwise going well. 
 It is a common and expensive failure mode in drug development. 
 The challenge has two tracks: one for activity prediction and one for structure prediction. 
@@ -28,14 +28,14 @@ I hope it can be an educational resource.
 ## The challenge
 
 The dataset is substantial: over 11,000 compounds screened in a single dose format and a subset of ~4800 compounds tested in a dose-response assay, with a counter-assay in a PXR-null cell line to flag false positives. 
-The test set focuses on structure-activity relationships — analogue series rather than diverse screening hits — which mirrors real lead optimisation work more closely than a random held-out set.
+The test set focuses on structure-activity relationships — analog series rather than diverse screening hits — which mirrors real lead optimization work more closely than a random held-out set.
 
 ![Overview of the OpenADMET PXR challenge dataset and assay workflow](../images/pxr_challenge_dataset_flow.png)
 *Dataset and assay flow for the OpenADMET PXR Induction Challenge. Image courtesy of the [OpenADMET group](https://openadmet.ghost.io).*
 
 The task is to predict pEC50 values for 513 compounds. 
 Submissions are evaluated by Relative Absolute Error (RAE). 
-There are two phases: a live leaderboard on an initial analogue set (Phase 1, due May 25), followed by a fully blinded second analogue set (Phase 2, due July 1).
+There are two phases: a live leaderboard on an initial analog set (Phase 1, due May 25), followed by a fully blinded second analog set (Phase 2, due July 1).
 
 ## What I plan to do
 

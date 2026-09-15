@@ -150,7 +150,7 @@ If you are currently between jobs, my main advice is to be kind to yourself and 
 If you are a company looking for external expertise in chemoinformatics and AI/ML applied to drug discovery, have a look at my profile and webpage (https://www.delavega.ai/). Reach out so we can discuss opportunities to work together.
 
 2026-03-26
-I am entering the OpenADMET blind challenge for predicting human PXR induction. PXR is a nuclear receptor that, when activated, upregulates CYP3A4 and other drug-metabolising enzymes. PXR activation is a common and costly failure mode in drug development. Predicting which compounds will trigger this from structure alone is genuinely difficult.
+I am entering the OpenADMET blind challenge for predicting human PXR induction. PXR is a nuclear receptor that, when activated, upregulates CYP3A4 and other drug-metabolizing enzymes. PXR activation is a common and costly failure mode in drug development. Predicting which compounds will trigger this from structure alone is genuinely difficult.
 
 My plan is to document my work openly in posts here, in more detail in blog posts and in an open code repository. My goal is to provide a worked example of how to approach a real ML problem in drug discovery.
 

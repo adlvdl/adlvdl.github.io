@@ -99,7 +99,7 @@ The idea is to pull connected nodes closer together and push unconnected ones ap
 ![Similarity network based on MMPs](../images/posts/2026_04_15_pxr_sar_exploration/mmp_network.png)
 
 The MMP network is fragmented: one large hub cluster, several medium clusters, and many isolated pairs. 
-The large, diffuse grid-like region should represent compounds with single-substituent changes at common positions, like systematic analogues sharing a common core. 
+The large, diffuse grid-like region should represent compounds with single-substituent changes at common positions, like systematic analogs sharing a common core. 
 However in this case it seems to be an artifact, as compounds in the largest connected component are small molecules with one or a small number of small rings. 
 Test-set compounds (green) appear in several clusters alongside training compounds, showing many similarity relationships between training and test set.
 
