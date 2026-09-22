@@ -1,3 +1,24 @@
+2026-09-21
+While working on the OpenADMET CYP challenge I came across a technique I had not seen before, from a competitor placed high on the leaderboard who published their full implementation (https://supercowpowers.github.io/workbench/blogs/cyp_challenge/).
+
+The idea: a prediction vector carries two separable things, its order and its placement on the pIC50 axis. Only the order is the model. You can treat each scored board row as an equation and solve for the test set's mean and standard deviation from three submissions that are affine transforms of one another. Then you move your predictions onto that distribution. No compound changes rank. Their code even estimates the correlation from out-of-fold predictions, so a new model can be placed without spending a submission to probe.
+
+I tried it on my own submissions and models, and it worked: macro ST-RAE 0.7040 → 0.6578 with no model change at all, rank 84 of 205. Most of it came from CYP2D6, my worst endpoint, 1.3099 → 0.8902. But I am conflicted. Is this calibration against information the organizers chose to publish? Or is it an unintended leakage channel out of the test set? What worries me are the consequences. If leaderboard probing becomes standard, the cheapest fix for an organizer is to stop running a live leaderboard, and the live leaderboard drives a lot of engagement to the challenge.
+
+What do people think? Legitimate use of public feedback, or something challenge design should close off?
+
+
+2026-09-16
+I have posted before about heavy slowdowns after training many models back to back on MPS, likely a memory clearing issue. The same thing showed up while training chemprop models for the OpenADMET CYP challenge. At baseline a model took around 85s per fold, but once the stalls set in one fold could take several hours. At one point, annoyed, I moved training to the CPU assuming I was trading speed for consistency.
+
+It was faster. On the CPU the models take 70s per fold, about 18% quicker than the GPU baseline and without the stalls. I still see the occasional slow fold under resource contention, mostly when Spotlight decides to reindex.
+
+On the challenge itself, strategies that did nothing for me in the PXR competition, such as pretraining and multitask learning, have helped considerably here. My ST-RAE on the leaderboard went from 0.95 to 0.78. Still some way off the leading teams, who are below 0.4.
+
+I have not worked out why the CPU is faster, beyond the stalls. It could be that chemprop models are small enough that the GPU is not used to its full potential. However it is a good reminder to always test your assumptions every now and again.
+
+
+
 2026-09-15
 Leaders from OpenAI and Anthropic are suggesting the AI field should slow down. This comes after several months of models breaking containment and hacking external servers, and of the US government imposing export controls on frontier models. Dario Amodei and Sam Altman argue we need to decelerate and focus on alignment to protect against future harms.
 
