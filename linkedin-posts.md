@@ -1,3 +1,12 @@
+2026-10-06
+I am finally back home from EuroQSAR and some time off in Rome (lovely, but my feet are still killing me). I really enjoyed the conference and learned a lot, not least about Chris de Graaf's skill with the harmonica.
+
+I especially liked the session format. Each session opened with a longer talk from an established scientist, followed by a second talk on a complementary topic, and closed with a short talk from an early career researcher that went deeper into the details.
+
+The talks I enjoyed most, or learned the most from, were by Hanneke Jansen, Chris Murray, Christina Athanasiou and Greg Landrum. The Wednesday banquet also deserves a mention: the food was amazing, and the visit to Solomeo beforehand was very interesting.
+
+Bravo to Gabriele Cruciani and the rest of the local organizing team for a wonderful conference.
+
 2026-09-21
 While working on the OpenADMET CYP challenge I came across a technique I had not seen before, from a competitor placed high on the leaderboard who published their full implementation (https://supercowpowers.github.io/workbench/blogs/cyp_challenge/).
 
