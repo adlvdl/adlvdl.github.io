@@ -1,3 +1,14 @@
+2026-10-20
+The first blog post on my OpenADMET CYP challenge work is finally out, almost a month after the interim deadline. Writing it up properly took longer than I planned, with EuroQSAR in the middle, and it is a long one.
+
+CYP2D6 turned out to be the hardest endpoint by a wide margin. I tried four different routes to improve it, including a pKa-weighted basic nitrogen feature and docking with interaction fingerprints, and the best of them still did not beat the model I started with. The pharmacophore ideas showed real signal on their own, but none of it survived once a good representation was already in the model.
+
+Some things did work. Pretraining Chemprop on public data and fine-tuning the whole encoder helped, and so did multitask learning with a shared encoder, which is the opposite of my experience in PXR. On the TDI track, tuning the decision threshold mattered more than the choice of model, and a weighted ensemble was the only thing that beat TabICL.
+
+I sit at rank 78 of 219 on regression and 95 of 114 on TDI, so there is plenty of ground to make up before the final deadline on November 3.
+
+Full post, with the code and every figure: https://adlvdl.github.io/posts/2026_10_20_cyp_phase1.html
+
 2026-10-06
 I am finally back home from EuroQSAR and some time off in Rome (lovely, but my feet are still killing me). I really enjoyed the conference and learned a lot, not least about Chris de Graaf's skill with the harmonica.
 

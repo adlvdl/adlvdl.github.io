@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYP Challenge #2: CYP2D6 was hard and now I understand better why — delavega.ai</title>
+  <meta name="description" content="Final results of the OpenADMET CYP inhibition challenge: what each phase 2 step bought, how my score moved on all 750 test compounds, and why the test labels show CYP2D6 was a different population from the training set.">
+  <script>(function(){try{var s=localStorage.getItem('theme')}catch(e){var s=null}var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s||p;document.documentElement.setAttribute('data-theme',t);document.documentElement.style.backgroundColor=t==='dark'?'#0e1926':'#f4f6fb';})();</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Lexend:wght@200;300;400&display=swap" rel="stylesheet">
+  <link href="../css/style.css" rel="stylesheet">
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="60367f78-1d6d-4f24-9a3f-60e2731ed781"></script>
+</head>
+<body>
+
+  <nav class="site-nav" id="site-nav">
+    <a class="nav-logo" href="../index.html">delavega.ai</a>
+    <ul class="nav-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../services.html">Services</a></li>
+      <li><a href="../blog.html" class="nav-active">Blog</a></li>
+      <li><a href="../publications.html">Publications</a></li>
+      <li><a href="../about.html">About</a></li>
+    </ul>
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">◐ <span class="theme-toggle-label">light</span></button>
+    <button class="nav-hamburger" onclick="toggleNav()" aria-label="Open menu">☰</button>
+  </nav>
+
+  <main>
+    <div class="container">
+
+      <div class="post-header">
+        <span class="post-date">2026-11-08</span>
+        <span class="mono-tag">blind challenge</span>
+        <h1>CYP Challenge #2: CYP2D6 was hard and now I understand better why</h1>
+      </div>
+
+      <div class="post-body">
+
+        <p>
+          The final deadline of the OpenADMET CYP inhibition challenge passed on November 3, and the organizers released the test labels the next day.
+          The final board lists only the entries that linked a model: 103 for direct inhibition (regression) and 62 for time-dependent inhibition (TDI).
+          My regression submission is at rank 53 with a macro ST-RAE of 0.5589 (field median 0.5567, best 0.3409).
+          My TDI submission is at rank 44 with a macro MCC of 0.2989 (median 0.3249, best 0.498).
+        </p>
+
+        <p>
+          That is the middle of the field for regression, and a better score than the interim board gave me in September (0.6384), though the fields differ, so I compare scores and not ranks.
+        </p>
+
+        <p>
+          In <a href="2026_10_20_cyp_phase1.html">the last post</a> I said the post at the end of the challenge would report how it all held up on the final labels.
+          The labels let me score every submission on all 750 test compounds, where the live board only ever scored half of them, and look at where the errors are.
+        </p>
+
+        <p>
+          In this post I will cover:
+        </p>
+
+        <ul>
+          <li>what I tried after the interim reveal, and what each step bought in cross-validation (CV)</li>
+          <li>how my score moved on the live half and on all 750 compounds</li>
+          <li>what the test labels show, mainly why CYP2D6 was so hard</li>
+        </ul>
+
+        <p>
+          The short version is that blending decorrelated models, adding a model trained on public rows, and training against the credible interval each gained a resolvable amount, and CV put them in the right order.
+          However, CYP2D6 barely moved in this second phase and I now have concrete evidence as to why.
+          Training labels exist only for hits, and 65% of the CYP2D6 test labels are below pIC50 4, against 9% in the training set.
+        </p>
+
+        <p>
+          TDI gets a few paragraphs, because regression took most of my time.
+          The code is in the <a href="https://github.com/adlvdl/cyp_competition" target="_blank" rel="noopener">public repository</a>.
+          The notebooks are numbered 16 to 32, and <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/33_phase2_review.py" target="_blank" rel="noopener">notebook 33</a> redraws every figure below from their outputs, the released labels and dated snapshots of the leaderboards.
+        </p>
+
+        <h3>Part 1: What I tried after the interim reveal</h3>
+
+        <p>
+          The previous post ended with three open items (train on pooled public labels, put an interval on the pretraining gain, decide whether placement stays) and one guess, that the gap to the leaders was the encoder.
+          I took these in a different order and added ideas from other teams' public reports.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/phase2_levers.png"
+               alt="Two panels. Left: change in macro ST-RAE in cross-validation for ten phase 2 levers with 95% intervals, grouped into encoders, blends, the pooled model, the interval loss and 3D geometry. Right: the three submitted steps, cross-validation against the full test set.">
+          <figcaption>Left: what each phase 2 lever bought in CV, as the change in macro ST-RAE with a fold-level 95% interval. Green and red mean the interval excludes zero, gray that it does not. Right: the three steps I submitted, in CV and on all 750 test compounds. The CV side cannot contain placement or seed means.</figcaption>
+        </figure>
+
+        <p>
+          <strong>A different frozen encoder was the largest single gain (notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/16_encoders.py" target="_blank" rel="noopener">16</a>).</strong>
+          CheMeleon, the encoder under most of my frozen-embedding results, was pretrained on 2D graphs.
+          I tested two frozen 3D encoders with the same TabICL readout, so only the embedding changes: Monroe (pretrained on PM6 properties and PCBA assays) and Atom-JEPA (pretrained on conformers).
+          <strong>Monroe scores a macro ST-RAE of 0.7020 against 0.7638 for CheMeleon (−0.0618, 95% CI −0.0678 to −0.0557, 25 folds), and is better on all four endpoints.</strong>
+          Atom-JEPA is not better than CheMeleon (0.7751).
+        </p>
+
+        <p>
+          Monroe's PCBA pretraining contains the Veith CYP panel that the challenge derives from.
+          Only 225 of the 4,905 training compounds (4.6%) and 1 of the 750 blind compounds have a label there, and dropping the 225 from CV moves Monroe's macro score from 0.7020 to 0.7015.
+        </p>
+
+        <p>
+          <strong>Blending paid even though the members correlate (notebooks <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/17_regression_ensemble.py" target="_blank" rel="noopener">17</a> and <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/18_shift_check.py" target="_blank" rel="noopener">18</a>).</strong>
+          In the previous post I said a blend has nothing to average away when its members correlate at 0.87 to 0.96, as my four Chemprop variants did.
+          Monroe and <code>pubchem</code> correlate at 0.77 to 0.90, and a 50/50 blend of them beat <code>pubchem</code> on all 25 folds (0.6660 against 0.7160).
+          So my rule of thumb was wrong in one direction.
+          Notebook 17 measured what each of 20 candidates adds to that blend, and neither the correlation of predictions nor of errors ranked them.
+          The four tree models had the lowest error correlation with the blend and made it worse, because they are weak on their own.
+          A candidate has to be both decent and different.
+        </p>
+
+        <p>
+          I compared three pools, fitted per endpoint with Caruana selection and scored out of sample with respect to the weights: A (Monroe and <code>pubchem</code>), B (A plus Atom-JEPA and CheMeleon) and C (all 20 candidates).
+          Against <code>pubchem</code> alone they change macro ST-RAE by −0.0505, −0.0556 and −0.0648, each on 25 of 25 folds.
+          Larger ensembles helped, but by small increments, and I was not sure they would reproduce on the test set.
+          Notebook 18 reweighted the out-of-fold predictions toward the blind set on two axes I could measure without labels.
+          At 300 compounds per endpoint C beat B in 88% of resamples unshifted and in 70 to 79% shifted, so C's advantage was not resolved at sample sizes like the test set's.
+          I submitted B because it was simpler.
+        </p>
+
+        <p>
+          <strong>Seed noise in the final fits was real (notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/19_seed_spread.py" target="_blank" rel="noopener">19</a>).</strong>
+          I had never passed a seed to Chemprop, and TabICL turned out not to be deterministic either.
+          Across five seeds the mean Spearman between pairs is 0.93 to 0.98 for <code>pubchem</code> (worst on CYP2D6), with a per-compound standard deviation of 0.10 to 0.15 pIC50.
+          From submission 22 on, every blind member is a seed mean.
+          CV has no seed-averaged out-of-fold predictions, so I could not measure the gain and estimated it at 0.003 to 0.005.
+          All five fits start from one pretrained checkpoint, so the pretraining gain still has no interval of its own.
+        </p>
+
+        <p>
+          <strong>A model trained on public rows is worse alone and improves the blend (notebooks <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/20_pooled_workbench.py" target="_blank" rel="noopener">20</a> and <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/21_pooled_ensemble.py" target="_blank" rel="noopener">21</a>).</strong>
+          The recipe is SuperCowPowers' (<a href="https://supercowpowers.github.io/workbench/blogs/cyp_challenge/" target="_blank" rel="noopener">working notes</a>, <a href="https://github.com/SuperCowPowers/workbench/tree/main/ml_pipelines/OpenADMET/cyp" target="_blank" rel="noopener">code</a>), which I replicated from their description.
+          It is one multitask Chemprop trained from scratch on the challenge rows plus public rows (PubChem qHTS and ChEMBL 37), with 17 output heads: the four scored endpoints and 13 auxiliary and public ones.
+          Alone it loses to <code>pubchem</code> (0.7382 against 0.7160, better on only 5 of 25 folds).
+          Added to pool B it gains −0.0214 (CI −0.0248 to −0.0181) on 25 of 25 folds, on every endpoint.
+          It correlates with <code>pubchem</code> at 0.72 to 0.88, against 0.87 to 0.96 among the Chemprop variants, and I think that decorrelation is the reason.
+        </p>
+
+        <p>
+          <strong>Training against the credible interval (notebooks <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/28_interval_loss.py" target="_blank" rel="noopener">28</a> to <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/31b_interval_blend_check.py" target="_blank" rel="noopener">31b</a>).</strong>
+          ST-RAE is zero for a prediction inside a compound's credible interval, so the matching training loss is the distance to the nearest bound, <code>relu(low − prediction) + relu(prediction − high)</code>.
+          I had only ever trained on the point estimate.
+          The idea is in the reports of mokhalaf22 (<a href="https://github.com/mokhalaf22/openadmet-cyp-public/blob/main/REPORT.md" target="_blank" rel="noopener">REPORT.md</a>) and doctawho42 (<a href="https://github.com/doctawho42/CYPChallenge/blob/main/docs/method_report.md" target="_blank" rel="noopener">method report</a>), which I read on October 25, taking ideas only and no code or data.
+          Chemprop has no such loss, so I rebuilt each compound's band inside the Chemprop subprocess from its own pIC50, with an isotonic lookup fitted to the challenge's reported bounds.
+        </p>
+
+        <p>
+          On the shipped <code>pubchem</code> model the interval loss gains −0.0265 over L1 (CI −0.0335 to −0.0194) and −0.0458 over the MSE configuration I had used since notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/05_auxiliary_data.py" target="_blank" rel="noopener">05</a>.
+          The gain is on CYP1A2, CYP2C9 and CYP3A4 and not on CYP2D6 (−0.001, p = 0.71).
+          I think CYP2D6 has little for the loss to use, since its training intervals are the tightest and only 8.6% of its labels sit below pIC50 4, but I did not test that.
+          Spearman does not move, so the gain is in position relative to the bands and not in ordering.
+          On the pooled model the loss is worse on CYP2D6 (+0.026), so the shipped CYP2D6 pooled seeds keep L1.
+        </p>
+
+        <p>
+          <strong>Fixed-moment placement erases most of that gain (notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/31b_interval_blend_check.py" target="_blank" rel="noopener">31b</a>).</strong>
+          Inside the blend, swapping in the interval-loss <code>pubchem</code> gains −0.0159 (CI −0.0183 to −0.0135).
+          Mapping each endpoint of the blend onto fixed moments, as the placement in submissions 12, 17 and 22 does, leaves −0.0023 (CI −0.0045 to −0.0002).
+          The loss works by moving the mean and the spread of the predictions, and a fixed-moment placement overwrites exactly that.
+          So the final submission leaves CYP2C9 and CYP3A4 unplaced and keeps the placement on CYP1A2 and CYP2D6, where it had paid on the live board.
+        </p>
+
+        <p>
+          <strong>3D geometry did not matter (notebooks <a href="https://github.com/adlvdl/cyp_competition/tree/main/experiments/25_xtb_conformer_probe" target="_blank" rel="noopener">25</a> and <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/26_monroe_conformers.py" target="_blank" rel="noopener">26</a>).</strong>
+          Oleg Gromov (Shorku on the challenge board) published xTB conformer ensembles for every challenge compound under an MIT license (<a href="https://github.com/Shorku/OpenADMET_Blind_Challenge_Predicting_CYP_Inhibition" target="_blank" rel="noopener">repository</a>).
+          Swapping the lowest-energy xTB conformer for an RDKit one moves Monroe's embedding 1.1 times as far as changing the RDKit random seed, and in CV the geometry step is −0.0009 (CI −0.0031 to +0.0015).
+          I shipped none of it, and I read the result as Monroe's embedding being set by the graph and not by the coordinates.
+        </p>
+
+        <p>
+          TDI took three notebooks (<a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/23_tdi_encoders.py" target="_blank" rel="noopener">23</a>, <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/27_tdi_prior_and_gate.py" target="_blank" rel="noopener">27</a> and <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/29_tdi_blend_a1.py" target="_blank" rel="noopener">29</a>) and one submission, which Part 2 covers in a few sentences.
+        </p>
+
+        <h3>Part 2: The final leaderboard, and how the score moved</h3>
+
+        <p>
+          The final board scores all 750 compounds, as the interim board did, so my September and November numbers are on the same compounds even though the fields differ.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>ST-RAE</th>
+              <th>Rank</th>
+              <th>Field median</th>
+              <th>Best</th>
+              <th>Spearman</th>
+              <th>Rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CYP1A2</td>
+              <td>0.5237</td>
+              <td>54</td>
+              <td>0.5179</td>
+              <td>0.3356</td>
+              <td>0.8189</td>
+              <td>38</td>
+            </tr>
+            <tr>
+              <td>CYP2C9</td>
+              <td>0.3978</td>
+              <td>39</td>
+              <td>0.4398</td>
+              <td>0.2849</td>
+              <td>0.8524</td>
+              <td>34</td>
+            </tr>
+            <tr>
+              <td>CYP2D6</td>
+              <td>0.8914</td>
+              <td>63</td>
+              <td>0.7120</td>
+              <td>0.4351</td>
+              <td>0.4382</td>
+              <td>54</td>
+            </tr>
+            <tr>
+              <td>CYP3A4</td>
+              <td>0.4228</td>
+              <td>48</td>
+              <td>0.4617</td>
+              <td>0.2979</td>
+              <td>0.8637</td>
+              <td>40</td>
+            </tr>
+            <tr>
+              <td><strong>Macro</strong></td>
+              <td><strong>0.5589</strong></td>
+              <td><strong>53</strong></td>
+              <td>0.5567</td>
+              <td>0.3409</td>
+              <td>0.7433</td>
+              <td>44</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          On CYP2C9 and CYP3A4 I am better than the median entry on both metrics, and on CYP1A2 I am at the median on ST-RAE and above it on Spearman.
+          On CYP2D6 my ordering is at the median (Spearman 0.4382 against 0.4426) and my ST-RAE is not (0.8914 against 0.7120).
+          The organizers' significance tiers put me in Tier 13 of 29, together with ranks 52 to 56, a tier that includes the median entry.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/final_board.png"
+               alt="Five scatter plots of ST-RAE against Spearman for the 103 final-board entries, macro and per endpoint, with my entry highlighted. The CYP2D6 panel shows two clusters of entries and my entry between them.">
+          <figcaption>Where I sit among the 103 entries on the final board. A: macro ST-RAE against macro Spearman. Spearman does not depend on placement, so the distance from the dashed field trend is what placement and calibration add beyond ordering. B to E: the same per endpoint. CYP2D6 has no trend line because the field splits into two clusters, and the dashed horizontal line is the ST-RAE of the best constant predictor (0.941).</figcaption>
+        </figure>
+
+        <p>
+          The gap to the best entry shrank since the interim board, from 0.27 macro ST-RAE to 0.22.
+          The relation between my ordering and my score also reversed.
+          In September my ST-RAE rank (78) was better than my Spearman rank (119), and I credited placement.
+          Now my Spearman rank is better than my ST-RAE rank on every endpoint, and I sit 0.033 above the field trend where I sat 0.053 below it in September.
+          The board does not say why the placement advantage went away, and I have no evidence beyond the possibility that other teams read the same public notes.
+        </p>
+
+        <p>
+          On CYP2D6 the field splits in two: 30 of the 103 entries score above 1.2, which is worse than a constant, and 57 score below 0.8.
+          My 0.8914 sits between the clusters.
+          Among the 36 other entries whose CYP2D6 Spearman is within 0.04 of mine, 28 have a lower ST-RAE than I do, with a median of 0.686.
+        </p>
+
+        <p>
+          <strong>All 750 compounds, and the live half.</strong>
+          I scored every submission on all 750 compounds, with intervals from a bootstrap that resamples whole series of analogs (136 clusters), because analogs of one hit move together.
+          My scorer reproduces the final board to within 0.003 per endpoint.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/score_history.png"
+               alt="Macro ST-RAE of eight regression submissions on all 750 compounds with 95% intervals, on the live board, and as expected from cross-validation, with the final-board median and best marked.">
+          <figcaption>Macro ST-RAE of every regression submission, on all 750 compounds with a 95% series-bootstrap interval, on the live board (half of the test set) and as expected from CV. The intervals on single scores overlap from submission 12 on, so the evidence is in the paired step differences in the table below.</figcaption>
+        </figure>
+
+        <p>
+          Macro ST-RAE went from 0.898 for the day-one LightGBM on ECFP4 to 0.558 for the final file, a change of −0.339 on all 750 compounds.
+          The three phase 2 steps, paired on the same compounds:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Step</th>
+              <th>What changed</th>
+              <th>All 750 compounds</th>
+              <th>CV expectation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>12 → 17</td>
+              <td>Monroe, Atom-JEPA, CheMeleon and <code>pubchem</code> blended</td>
+              <td>−0.033 (95% CI −0.053 to −0.018)</td>
+              <td>−0.056</td>
+            </tr>
+            <tr>
+              <td>17 → 22</td>
+              <td>pooled model and seed means added</td>
+              <td>−0.037 (−0.051 to −0.020)</td>
+              <td>−0.021</td>
+            </tr>
+            <tr>
+              <td>22 → 31</td>
+              <td>interval loss in two members, placement gated</td>
+              <td>−0.010 (−0.016 to −0.004)</td>
+              <td>−0.012</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          Each of the three is resolved on all 750 compounds, and CV had them in the right order.
+          The earlier PubChem pretraining (−0.027, CI −0.055 to +0.010) and the placement probe (−0.021, CI −0.158 to +0.075) are not resolved on this test set.
+        </p>
+
+        <p>
+          <strong>CV ordered the steps correctly and put the level too high.</strong>
+          It expected 0.660, 0.639 and 0.627 for the last three submissions, and the test scored 0.604, 0.568 and 0.558, which is 0.056 to 0.071 lower.
+          I cannot say how much of that gap is placement, which CV cannot see, and how much is the shift in the label distributions described in Part 3.
+        </p>
+
+        <p>
+          <strong>The live half flattered CYP2D6.</strong>
+          The live board and all 750 compounds agree on the macro for the final file (0.5573 and 0.5580), but that is cancellation.
+          CYP2D6 scored 0.8890 on all 750 compounds against 0.7997 on the live half, while the other three endpoints scored 0.012 to 0.047 better.
+          I cannot separate a harder hidden half from a placement fitted to the live half that transferred less well, because the live half's membership is not published.
+        </p>
+
+        <p>
+          <strong>The live rank went the wrong way while the score improved.</strong>
+          On the live board my score improved at every submission and my rank did not (84 of 250 at submission 12, 74 of 261 at submission 31).
+          All of the top 15 entries on the final board were last submitted between October 31 and November 3.
+          My regression file is from October 26 and my TDI file from October 23, so the front of the field was still moving in the last week and my files were not.
+        </p>
+
+        <p>
+          <strong>TDI.</strong>
+          The TDI file is the six-arm blend of notebook <a href="https://github.com/adlvdl/cyp_competition/tree/main/submissions/24_tdi_encoders" target="_blank" rel="noopener">24</a>: TabICL on frozen CheMeleon, Monroe and Atom-JEPA embeddings, plus three Chemprop variants, thresholded at 0.25.
+          It scored a macro MCC of 0.2989 on all 750 compounds, up from about 0.21 and 0.20 for the two files I had on the board in September.
+          It beats the earlier ensemble of notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/14_tdi_ensemble.py" target="_blank" rel="noopener">14</a> by +0.066 (CI +0.017 to +0.116) and cannot be told apart from the day-one LightGBM on ECFP4.
+          The +0.02 CV gain of that earlier ensemble did not transfer.
+        </p>
+
+        <h3>Part 3: What the test labels show</h3>
+
+        <p>
+          The labels let me ask a question I could not ask before, which is whether the test set is drawn from the population I trained on.
+          Every CV number in my repository assumes that it is.
+        </p>
+
+        <p>
+          <strong>The test set is not the training population.</strong>
+          Training labels exist only where the primary screen flagged a hit, so every training pIC50 is a hit's.
+          The test set is made of analogs of 75 hits chosen on CYP1A2, CYP2C9 and CYP3A4 activity, and every compound got a dose-response curve on all four isoforms whether or not it was active.
+          For CYP2D6 that gives a test set with a mean pIC50 of 3.27 against 4.78 in training, 65% of its labels below pIC50 4 against 9%, and 55% below 2.5, in a spike at the assay's floor.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/cyp2d6_population.png"
+               alt="Two panels. Left: histograms of CYP2D6 pIC50 for the training set, which sits above pIC50 4, and the test set, which has a large spike near 2. Right: share of labels below pIC50 4 for training and test on each endpoint.">
+          <figcaption>A: CYP2D6 labels as the share of compounds per 0.25 pIC50 bin, for the training set (hits only) and the test set (every analog). B: share of labels below pIC50 4, the assay's resolution, for each endpoint. CYP2D6 moves from 9% to 65%, and CYP3A4 moves the other way.</figcaption>
+        </figure>
+
+        <p>
+          CYP1A2 shifted the same way, less severely.
+          CYP2C9 and CYP3A4 shifted up, so their test sets are 81% and 78% active.
+          I think part of why those two scored well is that their test populations resemble their training populations, which means scores are not on equal footing across isoforms.
+        </p>
+
+        <p>
+          CV could not see any of this.
+          Out-of-fold predictions are scored against hit-only labels, so CV rewards ranking among hits and never rewards telling an inactive from an active.
+          It is the PXR lesson in a different form (there the hit rate went from 1.6% to 8.1%), and I did not apply it.
+          The size of the shift could not be seen without blind labels, but I think its direction on CYP2D6 could: the training labels were hits only, and the test compounds were analogs of hits chosen for other isoforms.
+          I should have modeled that expected bias more directly.
+        </p>
+
+        <p>
+          <strong>Where the CYP2D6 error comes from.</strong>
+        </p>
+
+        <ul>
+          <li>The floor is nearly free. The 441 compounds with a true pIC50 below 3 have very wide intervals and contribute 0.6% of the error.</li>
+          <li>The error is in the 289 compounds with a true pIC50 of 3.5 or more, which contribute 99% of it. I predicted them 1.2 to 1.9 pIC50 too low.</li>
+          <li>The predictions are compressed, not shifted. The predicted mean is 3.11 against a true 3.27, but the predicted standard deviation is 0.54 against 1.48, and the highest prediction in the file is 5.12.</li>
+          <li>The best constant predictor scores 0.941, so my whole stack bought 0.052 over a constant on CYP2D6. On the other three endpoints the best constant scores 0.98 to 1.00 and my file 0.40 to 0.52.</li>
+        </ul>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/cyp2d6_compression.png"
+               alt="Two panels. Left: shipped CYP2D6 predictions against true pIC50 with credible intervals as gray bars, with predictions confined between about 2 and 5. Right: mean prediction minus truth by true pIC50 bin for the four endpoints, with CYP2D6 falling to about −1.9 for the most potent compounds.">
+          <figcaption>A: shipped CYP2D6 prediction against the truth for the 748 labeled test compounds. The gray bars are the credible interval, so a point inside its bar costs nothing. B: mean prediction minus truth by true pIC50 bin. The floor compounds (left) are over-predicted and free. The potent compounds (right) are under-predicted on every endpoint, and by 1.2 to 1.9 on CYP2D6.</figcaption>
+        </figure>
+
+        <p>
+          The first thing I did to CYP2D6 was move its mean from 4.53 to 3.11 on the strength of the board's returned scores.
+          The labels explain why that was the largest single gain on the endpoint: the true mean is 3.27.
+          It fixed the center and left the range.
+        </p>
+
+        <p>
+          <strong>Ordering is ordinary, and separating actives from inactives is not.</strong>
+          Among the compounds with a pIC50 of 4 or more my Spearman on CYP2D6 is 0.655, similar to the 0.653 on CYP1A2.
+          The active-versus-inactive AUC (pIC50 of 4 or more against below 3) is 0.77 on CYP2D6 and 0.96 to 0.98 on the other three.
+          Assay noise is not the limit, since the rank ceiling set by the reported standard deviations is 0.99 among actives.
+          Series matter more than single compounds: 55% of the variance in CYP2D6 pIC50 lies between series, and of 136 series, 55 are entirely inactive and 25 entirely active.
+          Most of the task is deciding which series is active before ranking inside it, and where the nearest training compound has an ECFP4 similarity below 0.45 (48% of the CYP2D6 test compounds), Spearman among actives falls to 0.12 to 0.18.
+        </p>
+
+        <p>
+          <strong>The release held the information I needed, and I had rejected it.</strong>
+          The training release includes a single-concentration screen of 4,376 compounds on all four enzymes, and the compounds with a dose-response pIC50 are the ones the screen flagged for that enzyme.
+          For CYP2D6 that leaves about 2,880 compounds whose pIC50 I never had and whose inactivity was recorded.
+          As a controlled probe I trained LightGBM on ECFP4 with two sets of rows: the hit-only pIC50 labels that every notebook of mine used, and screen hit against non-hit over all screened compounds.
+          Scored as rankers of test actives against inactives, the first gives an AUC of 0.645 and the second 0.815, which is above the 0.765 of my shipped ensemble.
+        </p>
+
+        <figure>
+          <img src="../images/posts/2026_11_08_cyp_phase2/cyp2d6_ordering.png"
+               alt="Two panels. Left: bars of active-versus-inactive AUC, 0.96 to 0.98 for CYP1A2, CYP2C9 and CYP3A4, 0.77 for the shipped CYP2D6 file, 0.64 for LightGBM on hit labels and 0.81 for LightGBM on screen hit versus non-hit. Right: CYP2D6 Spearman among actives rising from 0.12 to 0.78 with similarity to the nearest training compound.">
+          <figcaption>A: how well the shipped file separates actives from inactives on each endpoint, and for CYP2D6 two LightGBM models on ECFP4 trained on different rows. B: CYP2D6 ordering among actives by similarity to the nearest CYP2D6 training compound.</figcaption>
+        </figure>
+
+        <p>
+          The effect is specific to CYP2D6, where the screen hit rate (34%) matches the test active rate (35%).
+          For CYP3A4 and CYP2C9 the test sets are 78% and 81% active, and the same classifier is weak or below chance (AUC 0.36 and 0.59).
+          I had tried versions of this in notebook 05, and CV rejected them.
+          The conclusion I drew, that the screen is a weak lever, was a property of my evaluation and not of the data, because it judged them on hit-only out-of-fold labels.
+          What this does not show is the gain inside the Chemprop and Caruana stack.
+          I formed the classifier idea after seeing the label distributions, ran it once and did not tune it, so read it as an existence proof.
+        </p>
+
+        <p>
+          <strong>The pharmacophore I spent three notebooks on is absent on the test set.</strong>
+          The basic-nitrogen flag correlates with CYP2D6 potency at +0.276 in the training labels and at −0.017 on the test labels.
+          In training, compounds with and without a basic nitrogen are 97.5% and 87% active, and on the test set 34% and 36%.
+          Notebooks <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/09_cyp2d6_representation.py" target="_blank" rel="noopener">09</a> to <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/11_docking_3d.py" target="_blank" rel="noopener">11</a> found that the pharmacophore is real and gives a model nothing it lacks, and that stands for the training population.
+          On the test population it separates nothing, so there was nothing for a better feature to recover.
+          This is the binary heuristic, and I did not re-test the pKa-weighted version.
+        </p>
+
+        <p>
+          <strong>Placement, again.</strong>
+          The previous post ended on the placement question: did the solve describe the test set, and did the placement transfer?
+          The solved means are within 0.02 of the true ones on three endpoints and within 0.16 on CYP2D6.
+          The solved spreads are within 8% on three endpoints and 25% too narrow on CYP1A2.
+          The live half's membership is not published, so this is a comparison and not a test.
+          The solve needs the Pearson correlation, which the board does not report, so I converted the Spearman it does report by assuming normality.
+          That underestimated CYP2D6, as I had suspected (0.365 against a measured 0.472), because the labels are a floor spike plus a tail.
+        </p>
+
+        <p>
+          So the solve was fine, and what did not hold was the spread I gave my own predictions.
+          The next table gives the best affine map of my shipped file, a stretch about its mean plus a shift, scored on the test labels.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Shipped</th>
+              <th>Best constant</th>
+              <th>Best affine map of my file</th>
+              <th>Stretch</th>
+              <th>Shift</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CYP1A2</td>
+              <td>0.5237</td>
+              <td>0.985</td>
+              <td>0.436</td>
+              <td>1.6</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>CYP2C9</td>
+              <td>0.3976</td>
+              <td>0.996</td>
+              <td>0.372</td>
+              <td>1.225</td>
+              <td>0</td>
+            </tr>
+            <tr>
+              <td>CYP2D6</td>
+              <td>0.8890</td>
+              <td>0.941</td>
+              <td>0.625</td>
+              <td>1.525</td>
+              <td>+0.6</td>
+            </tr>
+            <tr>
+              <td>CYP3A4</td>
+              <td>0.4219</td>
+              <td>0.990</td>
+              <td>0.378</td>
+              <td>1.15</td>
+              <td>+0.15</td>
+            </tr>
+            <tr>
+              <td>Macro</td>
+              <td>0.5580</td>
+              <td>0.978</td>
+              <td>0.453</td>
+              <td></td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          This uses the test labels, so it measures the headroom in my ordering and not a score I could have chosen blind.
+          The best stretch is wider than what I shipped on every endpoint, and on the final board a macro of 0.453 would be rank 33 instead of 53.
+          I set the shipped spreads from the ST-RAE optimum measured on out-of-fold predictions (CYP1A2), from the R²-optimal spread with the underestimated Pearson (CYP2D6), or from the spread of the blend (CYP2C9 and CYP3A4).
+          Out-of-fold predictions come from the training population, and I think that is why the measured shape did not carry over.
+        </p>
+
+        <p>
+          <strong>What the labels change about my unease.</strong>
+          In the previous post I was conflicted about solving for the hidden test set's mean and spread from the board's returned scores.
+          On the reading that this is ordinary use of public feedback, the board is how I learned that CYP2D6 was a different population, which CV could not show me, and the correction carried over: at the macro, the placed submissions score the same or better on all 750 compounds than on the live half (0.5580 against 0.5573 for the final file).
+          CYP2D6 is the exception, at 0.07 to 0.09 worse.
+          On the reading that this is information nobody meant to release, it took only one or two scored submissions per endpoint to recover the first two moments of the hidden labels.
+          Thirty of the 103 entries score above 1.2 on CYP2D6, worse than the 1.16 my first submission scored, so I doubt the trap I fell into was rare.
+          I am still conflicted, for the same two reasons.
+        </p>
+
+        <p>
+          <strong>TDI has the same problem on CYP2D6.</strong>
+          Its positive rate on the test set is 5.9% against 21.7% in training.
+          TDI is a shift in pIC50, so a compound that is inactive in the direct condition has little to shift: the TDI rate is 12% among direct-active compounds and 2.5% among the rest.
+          150 of my 209 predicted CYP2D6 positives are direct-inactive, and the precision is 12%.
+        </p>
+
+        <h3>What I take from this</h3>
+
+        <p>
+          The result I trust most is the order of the steps.
+          Blending decorrelated members, adding a model trained on public rows, and training against the credible interval each gained between 0.010 and 0.037 macro ST-RAE on all 750 compounds, with intervals that exclude zero, and CV had them in the right order.
+          The result I trust least is any level.
+          CV put the last three submissions 0.056 to 0.071 above their test scores, and it could not have told me that CYP2D6 was a different population.
+        </p>
+
+        <p>
+          What the labels establish:
+        </p>
+
+        <ul>
+          <li>The test set is not the training population, most strikingly on CYP2D6, and CYP2C9 and CYP3A4 shifted up instead.</li>
+          <li>The CYP2D6 error is the 289 compounds with a true pIC50 of 3.5 or more, predicted 1.2 to 1.9 too low from a compressed range, together with weak separation of actives from inactives (AUC 0.77 against 0.96 to 0.98).</li>
+          <li>The release held information about the inactives, and a plain classifier on it reaches an AUC of 0.815. CV scored only hits, so it could not reward it.</li>
+          <li>The moments I solved from the board were close to the truth, and the spread I gave my own predictions was too narrow on every endpoint.</li>
+        </ul>
+
+        <p>
+          What is not established:
+        </p>
+
+        <ul>
+          <li>Whether a screen-trained head helps inside the Chemprop and Caruana stack. I tested a plain LightGBM, once, after seeing the labels.</li>
+          <li>Whether the live half was easier for CYP2D6 or my placement fitted it too closely.</li>
+          <li>The TDI rule from notebook <a href="https://github.com/adlvdl/cyp_competition/blob/main/notebooks/27_tdi_prior_and_gate.py" target="_blank" rel="noopener">27</a>, which trains only on compounds that have a direct-inhibition arm. It gained +0.03 in CV and I never shipped it.</li>
+        </ul>
+
+        <p>
+          The rule I take for next time is to compare the label distribution of the training set with the stated test design before trusting any CV number.
+          That is the PXR lesson a second time.
+          The second rule is that a CV that scores only labeled rows cannot value information about unlabeled ones, so any lever that adds inactive information has to be judged on a split that contains inactives.
+        </p>
+
+        <p>
+          I don't think the phase 2 work was wasted.
+          My macro Spearman went from 0.681 to 0.743, and the three steps in Part 2 are resolved.
+          But on the endpoint that cost me the most places, I spent three notebooks on a mechanism that is absent from the test population, and I rejected a lever that may have helped on an evaluation that could not see it.
+        </p>
+
+        <p>
+          Thank you to <a href="https://openadmet.org" target="_blank" rel="noopener">OpenADMET</a> for running the challenge and releasing the labels, to <a href="https://github.com/SuperCowPowers" target="_blank" rel="noopener">SuperCowPowers</a> for the pooled-model recipe and the placement idea (<a href="https://github.com/SuperCowPowers/workbench" target="_blank" rel="noopener">workbench</a>, <a href="https://supercowpowers.github.io/workbench/blogs/cyp_challenge/" target="_blank" rel="noopener">working notes</a>), to <a href="https://github.com/mokhalaf22" target="_blank" rel="noopener">mokhalaf22</a> (<a href="https://github.com/mokhalaf22/openadmet-cyp-public" target="_blank" rel="noopener">openadmet-cyp-public</a>) and <a href="https://github.com/doctawho42" target="_blank" rel="noopener">doctawho42</a> (<a href="https://github.com/doctawho42/CYPChallenge" target="_blank" rel="noopener">CYPChallenge</a>) for the interval loss, to <a href="https://github.com/JacksonBurns" target="_blank" rel="noopener">JacksonBurns</a> (<a href="https://github.com/JacksonBurns/cyp-challenge" target="_blank" rel="noopener">cyp-challenge</a>) and <a href="https://github.com/Nomad-link-id" target="_blank" rel="noopener">Nomad-link-id</a> for the TDI ideas I tested, and to Oleg Gromov (<a href="https://github.com/Shorku" target="_blank" rel="noopener">Shorku</a>, <a href="https://github.com/Shorku/OpenADMET_Blind_Challenge_Predicting_CYP_Inhibition" target="_blank" rel="noopener">repository</a>) for the xTB conformers.
+        </p>
+
+        <p>
+          A question for anyone who scored well on CYP2D6: the best entry is at 0.435 and 57 entries are below 0.8, against my 0.891.
+          Did you use the single-concentration screen, a different prior for the assay floor, or something else?
+          I would like to know.
+        </p>
+
+        <p>
+          If you reached the end, thank you for reading.
+        </p>
+
+      </div>
+
+      <div class="post-comments">
+        <span class="post-comments-label">Comments</span>
+        <div class="giscus"></div>
+        <script>
+          (function() {
+            var theme = document.documentElement.getAttribute('data-theme') || 'light';
+            var s = document.createElement('script');
+            s.src = 'https://giscus.app/client.js';
+            s.dataset.repo = 'adlvdl/adlvdl.github.io';
+            s.dataset.repoId = 'MDEwOlJlcG9zaXRvcnk5NjUyOTg3MQ==';
+            s.dataset.category = 'Comments';
+            s.dataset.categoryId = 'DIC_kwDOBcDtz84C8G4F';
+            s.dataset.mapping = 'pathname';
+            s.dataset.strict = '0';
+            s.dataset.reactionsEnabled = '0';
+            s.dataset.emitMetadata = '0';
+            s.dataset.inputPosition = 'top';
+            s.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+            s.dataset.lang = 'en';
+            s.dataset.loading = 'lazy';
+            s.crossOrigin = 'anonymous';
+            s.async = true;
+            document.currentScript.parentNode.appendChild(s);
+          })();
+        </script>
+      </div>
+
+      <div class="post-nav">
+        <a href="../index.html">← Home</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="../blog.html">Back to blog →</a>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <span class="footer-logo">delavega.ai · 2026</span>
+    <ul class="footer-links">
+      <li><a href="https://www.linkedin.com/in/adlvdl/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a href="https://orcid.org/0000-0003-0927-2099" target="_blank" rel="noopener">ORCID</a></li>
+      <li><a href="https://www.researchgate.net/profile/Antonio_De_La_Vega_De_Leon" target="_blank" rel="noopener">ResearchGate</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.documentElement.style.backgroundColor = next === 'dark' ? '#0e1926' : '#f4f6fb';
+      try { localStorage.setItem('theme', next); } catch(e) {}
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = next; });
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) { iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: next === 'dark' ? 'dark' : 'light' } } }, 'https://giscus.app'); }
+    }
+    function toggleNav() { document.getElementById('site-nav').classList.toggle('nav-open'); }
+    document.addEventListener('click', function(e) {
+      var nav = document.getElementById('site-nav');
+      if (nav.classList.contains('nav-open') && !nav.contains(e.target)) nav.classList.remove('nav-open');
+    });
+    document.querySelectorAll('.nav-links a').forEach(function(l) {
+      l.addEventListener('click', function() { document.getElementById('site-nav').classList.remove('nav-open'); });
+    });
+    (function() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'light';
+      document.querySelectorAll('.theme-toggle-label').forEach(function(el) { el.textContent = theme; });
+    })();
+  </script>
+</body>
+</html>
